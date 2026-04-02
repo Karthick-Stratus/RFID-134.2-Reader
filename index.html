@@ -568,7 +568,7 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
 * **Q-Factor = ${Q.toFixed(1)}**`;
 
             lastReportText = report;
-            return report.replace(/\n/>g, '<br>').replace(/### (.*?)\<br\>/g, '<h3 class="text-base font-bold text-indigo-700 mt-4 mb-1 border-b pb-1">$1</h3>').replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900">$1</strong>').replace(/\*(.*?)\<br\>/g, '<div class="ml-4 flex gap-2"><span class="text-indigo-400">•</span> <span>$1</span></div>');
+            return report.replace(/\n/g, '<br>').replace(/### (.*?)\<br\>/g, '<h3 class="text-base font-bold text-indigo-700 mt-4 mb-1 border-b pb-1">$1</h3>').replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900">$1</strong>').replace(/\*(.*?)\<br\>/g, '<div class="ml-4 flex gap-2"><span class="text-indigo-400">•</span> <span>$1</span></div>');
         }
 
         function openDetailedReport() {
