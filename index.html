@@ -41,8 +41,8 @@
             border: 1px solid rgba(0,0,0,0.05);
         }
         
-        /* MathJax Custom Styling to ensure it matches the text color */
-        .MathJax { color: #1e293b !important; font-size: 0.9em !important; }
+        /* MathJax Custom Styling */
+        .MathJax { color: #1e293b !important; font-size: 0.85em !important; }
         
         #pcb-canvas {
             display: block;   
@@ -54,6 +54,16 @@
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
             border: 2px solid #0f172a;
         }
+
+        .accordion-content {
+            display: none;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .accordion-content.open {
+            display: block;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
@@ -63,7 +73,7 @@
         <p class="text-slate-500 mt-2">134.2 kHz Planar Spiral Coil Calculator</p>
     </div>
 
-    <div class="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         
         <!-- Column 1: Input Panel -->
         <div class="glass-panel rounded-xl shadow-lg p-6 flex flex-col border-t-4 border-t-blue-500">
@@ -75,12 +85,12 @@
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Outer Length (mm)</label>
-                        <input type="number" id="length" value="80" step="1" class="input-field" oninput="calculate()">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Outer Length X (mm)</label>
+                        <input type="number" id="length" value="100" step="1" class="input-field" oninput="calculate()">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Outer Width (mm)</label>
-                        <input type="number" id="width" value="60" step="1" class="input-field" oninput="calculate()">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Outer Width Y (mm)</label>
+                        <input type="number" id="width" value="70" step="1" class="input-field" oninput="calculate()">
                     </div>
                 </div>
                 
@@ -92,20 +102,20 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Trace Width (mm)</label>
-                        <input type="number" id="traceW" value="0.5" step="0.1" class="input-field" oninput="calculate()">
+                        <input type="number" id="traceW" value="0.75" step="0.1" class="input-field" oninput="calculate()">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Trace Spacing (mm)</label>
-                        <input type="number" id="traceS" value="0.3" step="0.1" class="input-field" oninput="calculate()">
+                        <input type="number" id="traceS" value="0.4" step="0.1" class="input-field" oninput="calculate()">
                     </div>
                 </div>
                 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Copper Weight</label>
                     <select id="cuWeight" class="input-field bg-white" onchange="calculate()">
-                        <option value="0.5">0.5 oz (17.5 µm)</option>
-                        <option value="1.0" selected>1.0 oz (35 µm)</option>
-                        <option value="2.0">2.0 oz (70 µm)</option>
+                        <option value="0.5">0.5 oz (17.5 µm) - Thin</option>
+                        <option value="1.0" selected>1.0 oz (35.0 µm) - Standard</option>
+                        <option value="2.0">2.0 oz (70.0 µm) - Thick</option>
                     </select>
                 </div>
                 
@@ -122,38 +132,16 @@
             <div id="error-msg" class="hidden mt-6 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-xs shadow-sm"></div>
         </div>
 
-        <!-- Column 2: PCB Visualization & Formulas -->
+        <!-- Column 2: PCB Visualization -->
         <div class="glass-panel text-slate-800 rounded-xl shadow-lg p-6 flex flex-col lg:col-span-1 border-t-4 border-t-emerald-500 overflow-hidden">
             <h2 class="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
                 <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                 PCB Antenna Preview
             </h2>
             
-            <div class="w-full flex-grow flex items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner mb-6 min-h-[250px]">
+            <div class="w-full flex-grow flex flex-col items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner min-h-[350px]">
                 <canvas id="pcb-canvas" width="400" height="400"></canvas>
-            </div>
-
-            <h3 class="text-sm font-bold text-slate-600 mb-2 border-b pb-1 uppercase tracking-wider">Applied Models</h3>
-            <!-- Math Formulas rendered by MathJax -->
-            <div class="space-y-4 text-xs">
-                <div>
-                    <span class="font-semibold text-slate-700">Modified Wheeler Formula (Inductance):</span>
-                    <div class="mt-1 overflow-x-auto text-center" style="font-size: 1.1em;">
-                        $$L = \frac{\mu_{0} N^{2} d_{avg} c_{1}}{2} \Big[ \ln(\frac{c_{2}}{\rho}) + c_{3}\rho + c_{4}\rho^{2} \Big]$$
-                    </div>
-                </div>
-                <div>
-                    <span class="font-semibold text-slate-700">DC Resistance:</span>
-                    <div class="mt-1 overflow-x-auto text-center" style="font-size: 1.1em;">
-                        $$R = \rho_{cu} \frac{Len}{W_{tr} \times T_{cu}}$$
-                    </div>
-                </div>
-                <div>
-                    <span class="font-semibold text-slate-700">Quality Factor:</span>
-                    <div class="mt-1 overflow-x-auto text-center" style="font-size: 1.1em;">
-                        $$Q = \frac{2 \pi f L}{R}$$
-                    </div>
-                </div>
+                <span class="text-[10px] text-slate-400 mt-2 block w-full text-center">Auto-scaled Visualization (Top-Down spiral)</span>
             </div>
         </div>
 
@@ -161,59 +149,132 @@
         <div class="glass-panel rounded-xl shadow-lg p-6 flex flex-col border-t-4 border-t-slate-800">
             <h2 class="text-xl font-bold text-slate-800 tracking-tight mb-5 flex items-center gap-2">
                 <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Electrical Results
+                Hardware Constraint Check
             </h2>
             
-            <div id="results-container" class="space-y-6">
+            <div id="results-container" class="space-y-4">
+                
+                <div class="text-xs text-slate-500 italic mb-2 border-l-2 border-amber-400 pl-2">
+                    Note: Values are vetted against TI's Reference Guide requirements. Failing to meet these ranges may permanently damage the MRD2 reader.
+                </div>
+
                 <!-- Validation Blocks -->
-                <div class="bg-indigo-50 p-5 rounded-lg border border-indigo-100 mb-6">
-                    <h3 class="text-xs font-bold text-indigo-800 mb-3 uppercase tracking-wider">TI Reader Constraints</h3>
+                <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 shadow-sm flex flex-col gap-3">
                     
-                    <div class="bg-white p-3 rounded shadow-sm mb-3">
+                    <!-- Inductance -->
+                    <div class="bg-white p-3 rounded shadow-sm">
                         <div class="flex justify-between items-start mb-1">
                             <span class="text-sm font-semibold text-slate-700">Inductance (L)</span>
                             <span id="outInd" class="text-lg font-mono font-bold">0.00 µH</span>
                         </div>
                         <div class="flex justify-between items-center text-xs text-slate-500 mb-2">
-                            <span>Target: 46.0 - 47.9 µH</span>
+                            <span>Target Datasheet Limit: <strong>46.0 - 47.9 µH</strong> (Strict 47.0 µH Typ)</span>
                         </div>
                         <div id="indStatus" class="pt-2 border-t border-slate-100 text-xs"></div>
                     </div>
                     
+                    <!-- Quality Factor -->
                     <div class="bg-white p-3 rounded shadow-sm">
                         <div class="flex justify-between items-start mb-1">
                             <span class="text-sm font-semibold text-slate-700">Quality Factor (Q)</span>
                             <span id="outQ" class="text-lg font-mono font-bold">0.00</span>
                         </div>
                         <div class="flex justify-between items-center text-xs text-slate-500 mb-2">
-                            <span>Target: 10 - 20</span>
+                            <span>Target Datasheet Limit: <strong>10.0 - 20.0</strong></span>
                         </div>
                         <div id="qStatus" class="pt-2 border-t border-slate-100 text-xs"></div>
                     </div>
+
+                    <!-- Resistance Analysis -->
+                    <div class="bg-white p-3 rounded shadow-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-sm font-semibold text-slate-700">Series Resistance (R)</span>
+                            <span id="outRes" class="text-lg font-mono font-bold">0.00 Ω</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-500 mb-2">
+                            <span>Derived TI Tolerance: <strong>~2.0 - 4.0 Ω</strong> (Derived from Q=10-20 limits)</span>
+                        </div>
+                        <div id="resStatus" class="pt-2 border-t border-slate-100 text-xs"></div>
+                    </div>
+
                 </div>
 
-                <!-- Auxiliary Data -->
-                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Physical Specifications</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <span class="block text-xs text-slate-500 mb-1">Total Length</span>
-                        <span id="outLength" class="block font-mono text-sm font-semibold text-slate-800">0.00 m</span>
+            </div>
+        </div>
+    </div> <!-- End Top Row Grid -->
+
+    <!-- Engineering & Formula Explanation Section -->
+    <div class="max-w-7xl w-full glass-panel rounded-xl shadow-lg p-6 lg:p-10 mb-10 text-slate-700 border-t-4 border-t-amber-500">
+        
+        <h2 class="text-2xl font-bold text-slate-800 tracking-tight mb-6 flex items-center gap-2 border-b pb-3 border-slate-200">
+            <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            Calculation Theory & Formula Breakdown
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+            
+            <!-- Step 1: Trace Length & Resistance -->
+            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200">
+                <h3 class="font-bold text-slate-800 mb-2 text-md flex items-center gap-2">
+                    <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm">Step 1</span> Base Physicals & DC Resistance
+                </h3>
+                <p class="text-xs mb-3 text-slate-600">The total length of the spiral is estimated using the geometry of each wrap. The DC resistance is directly derived from standard Copper resistivity laws.</p>
+                <div class="overflow-x-auto text-center" style="font-size: 1.1em;">
+                    $$R_{dc} = \rho_{cu} \frac{L_{total}}{A_{cross}} = \rho_{cu} \frac{L_{total}}{W_{tr} \times T_{cu}}$$
+                </div>
+                <div class="text-xs mt-3 bg-white p-3 rounded border border-slate-200 text-slate-600">
+                    <strong class="text-slate-800 block mb-1">Variable References:</strong>
+                    <li>\(\rho_{cu}\): Resistivity of Copper (\(1.68 \times 10^{-8} \, \Omega \cdot m\))</li>
+                    <li>\(L_{total}\): Total trace length (perimeters minus turning deductions).</li>
+                    <li>\(A_{cross}\): Cross section (Trace Width \(\times\) Copper Weight Thickness). 1oz Cu = 35µm.</li>
+                    <i>Ref: Standard Material Resistivity Equations.</i>
+                </div>
+            </div>
+
+            <!-- Step 2: Modified Wheeler Inductance -->
+            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200">
+                <h3 class="font-bold text-slate-800 mb-2 text-md flex items-center gap-2">
+                    <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-sm">Step 2</span> Rectangular Planar Inductance
+                </h3>
+                <p class="text-xs mb-3 text-slate-600">The <strong>Modified Wheeler Formula</strong> is an industry standard designed by Mohan et al. (Stanford University) highly accurate for calculating square/rectangular planar spiral coil inductance on PCBs.</p>
+                <div class="overflow-x-auto text-center mb-2" style="font-size: 1.1em;">
+                    $$L = \frac{\mu_{0} N^{2} d_{avg} c_{1}}{2} \Big[ \ln(\frac{c_{2}}{\rho}) + c_{3}\rho + c_{4}\rho^{2} \Big]$$
+                </div>
+                <div class="text-xs bg-white p-3 rounded border border-slate-200 text-slate-600 h-full">
+                    <strong class="text-slate-800 block mb-1">Variable References:</strong>
+                    <li>\(\mu_{0}\): Vacuum permeability (\(1.256 \times 10^{-6} \, \text{H/m}\)).</li>
+                    <li>\(\rho\): Fill Ratio. \( \rho = (D_{out} - D_{in}) / (D_{out} + D_{in}) \). Dictates how hollow the center of the coil is.</li>
+                    <li>\(C_{1 \to 4}\): Shape Constants. For Rectangular spirals: \(C_1=1.27, C_2=2.07, C_3=0.18, C_4=0.13\).</li>
+                    <i>Ref: S. Mohan et al., "Simple Accurate Expressions for Planar Spiral Inductances" (IEEE 1999).</i>
+                </div>
+            </div>
+
+            <!-- Step 3: Q-Factor -->
+            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 md:col-span-2">
+                <h3 class="font-bold text-slate-800 mb-2 text-md flex items-center gap-2">
+                    <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-sm">Step 3</span> The Quality Factor (Q)
+                </h3>
+                <p class="text-xs mb-3 text-slate-600 w-full">The Q-factor defines the efficiency and bandwidth of the antenna. The TI Texas Instruments Reader strictly requires a Q factor between 10 to 20 for HDX glass tag FDX burst reading. If Q>20, bandwidth narrows and the 134.2 kHz receiver gets clipped. If Q<10, the trace resistance limits the transmission power.</p>
+                <div class="overflow-x-auto text-center mb-3" style="font-size: 1.1em;">
+                    $$X_{L} = 2 \pi f L \quad \longrightarrow \quad Q = \frac{X_{L}}{R + R_{reader}}$$
+                </div>
+                <div class="text-xs bg-white p-3 rounded border border-slate-200 text-slate-600 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <strong class="text-slate-800 block mb-1">Variable References:</strong>
+                        <li>\(f\): Target Operating Frequency (134,200 Hz).</li>
+                        <li>\(X_{L}\): Inductive Reactance at the operating frequency.</li>
                     </div>
-                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <span class="block text-xs text-slate-500 mb-1">Resistance</span>
-                        <span id="outRes" class="block font-mono text-sm font-semibold text-slate-800">0.00 Ω</span>
-                    </div>
-                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <span class="block text-xs text-slate-500 mb-1">Outer Diagonal</span>
-                        <span id="outDiag" class="block font-mono text-sm font-semibold text-slate-800">0.00 mm</span>
-                    </div>
-                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <span class="block text-xs text-slate-500 mb-1">Fill Ratio (ρ)</span>
-                        <span id="outFill" class="block font-mono text-sm font-semibold text-slate-800">0.00</span>
+                    <div>
+                        <strong class="text-slate-800 block mb-1">TI Specific Limits:</strong>
+                        <li>TI RI-STU-MRD2 Reader Target: \(L = 47 \, \mu\text{H}\).</li>
+                        <li>Therefore: \(X_{L} \approx 39.6 \, \Omega\) at 134.2 kHz.</li>
+                        <li>To keep \( Q \approx 10 \to 20 \), resistance \(R\) must be roughly <strong>2.0 to 4.0 Ohms</strong>.</li>
                     </div>
                 </div>
             </div>
+
         </div>
+
     </div>
 
     <script>
@@ -223,28 +284,27 @@
                 : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
         }
 
-        // Draw Spiral on Canvas
+        // Draw Spiral on Canvas with Corrected Top Routing
         function drawPCB(L_out, W_out, N, w, s, corner) {
             const canvas = document.getElementById('pcb-canvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Calculate a scale factor to fit the antenna in the 400x400 canvas with padding
-            const padding = 40; 
             const maxDim = Math.max(L_out, W_out);
             if (maxDim <= 0) return;
             
-            const scale = (400 - padding * 2) / maxDim;
+            // Box padding around the edges
+            const padding = 20; 
+            const scale = (canvas.width - padding * 2) / maxDim;
             
-            // Center offsetting
+            // Center of Canvas
             const cx = canvas.width / 2;
             const cy = canvas.height / 2;
 
-            const baseColor = "#d97706"; // Copper color
-
             ctx.lineWidth = w * scale;
-            ctx.strokeStyle = baseColor;
+            ctx.strokeStyle = "#eab308"; // Copper trace color
             ctx.lineCap = corner === "curve" ? "round" : "square";
+            
             if(corner === "curve") {
                 ctx.lineJoin = "round";
             } else if (corner === "45") {
@@ -255,58 +315,54 @@
 
             ctx.beginPath();
             
-            // We draw from outside in
-            let currentWidth = L_out * scale;
-            let currentHeight = W_out * scale;
+            // We draw boundaries from the outside moving in.
+            // Start position outer boundary:
+            let left = cx - (L_out * scale) / 2;
+            let right = cx + (L_out * scale) / 2;
+            let top = cy - (W_out * scale) / 2;
+            let bottom = cy + (W_out * scale) / 2;
             
-            let x = cx - (currentWidth / 2);
-            let y = cy - (currentHeight / 2);
+            let delta = (w + s) * scale;
             
-            ctx.moveTo(x, y);
+            // Start cursor slightly inward so the connection looks natural
+            ctx.moveTo(left, top);
 
-            for (let i = 0; i < N * 4; i++) {
-                // Determine direction based on segment
-                const segment = i % 4;
-                const turn = Math.floor(i / 4);
+            for (let i = 0; i < N; i++) {
+                // Top Edge (Left to Right)
+                ctx.lineTo(right, top);
+                // Right Edge (Top to Bottom)
+                ctx.lineTo(right, bottom);
+                // Bottom Edge (Right to Left (slightly inset for spiral))
+                ctx.lineTo(left + delta, bottom);
+                // Left Edge (Bottom back to Top (inset for next spiral lap))
+                ctx.lineTo(left + delta, top + delta);
                 
-                // Track spacing decrease
-                const decrease = (w + s) * scale;
+                // Tighten the bounds for the next loop inwards
+                left += delta;
+                right -= delta;
+                top += delta;
+                bottom -= delta;
 
-                if (segment === 0) { // Top edge -> Right
-                    x += currentWidth - (turn > 0 ? decrease : 0);
-                    ctx.lineTo(x, y);
-                } else if (segment === 1) { // Right edge -> Bottom
-                    y += currentHeight - (turn > 0 ? decrease : 0) - (turn===0 ? 0 : 0);
-                    ctx.lineTo(x, y);
-                } else if (segment === 2) { // Bottom edge -> Left
-                    x -= currentWidth - decrease;
-                    ctx.lineTo(x, y);
-                } else if (segment === 3) { // Left edge -> Up
-                    y -= currentHeight - decrease;
-                    ctx.lineTo(x, y);
-                    
-                    // After a full loop, decrease sizes for the next inner loop
-                    currentWidth -= decrease * 2;
-                    currentHeight -= decrease * 2;
-                    
-                    // Small offset to spiral inward
-                    if (i < (N*4 - 1)) {
-                        x += decrease;
-                        ctx.lineTo(x, y);
-                    }
-                }
+                // Stop drawing if bounds collapse
+                if(left >= right || top >= bottom) break;
             }
+            
             ctx.stroke();
             
-            // Add some "vias" at the ends
+            // Draw via pads at ends
             ctx.fillStyle = "#fbbf24";
+            
+            // Outer via
             ctx.beginPath();
             ctx.arc(cx - (L_out*scale)/2, cy - (W_out*scale)/2, (w*scale), 0, 2*Math.PI);
             ctx.fill();
             
-            ctx.beginPath();
-            ctx.arc(x, y, (w*scale), 0, 2*Math.PI);
-            ctx.fill();
+            // Inner via
+            if(left < right && top < bottom) {
+                ctx.beginPath();
+                ctx.arc(left, top, (w*scale), 0, 2*Math.PI);
+                ctx.fill();
+            }
         }
 
         function calculate() {
@@ -379,11 +435,6 @@
                 // Output Data
                 errDiv.classList.add('hidden');
                 resDiv.style.opacity = '1';
-
-                document.getElementById('outLength').innerText = total_len_m.toFixed(2) + " m";
-                document.getElementById('outRes').innerText = R.toFixed(2) + " Ω";
-                document.getElementById('outDiag').innerText = Math.sqrt(L_out*L_out + W_out*W_out).toFixed(2) + " mm";
-                document.getElementById('outFill').innerText = fill_ratio.toFixed(3);
                 
                 // Inductance Validation
                 const indEl = document.getElementById('outInd');
@@ -391,10 +442,10 @@
                 indEl.innerText = L_uH.toFixed(2) + " µH";
                 
                 if (L_uH >= 46.0 && L_uH <= 47.9) {
-                    indStat.innerHTML = `<span class="pass-text">${getIcon(true)} PASS - Operational Target Met</span>`;
+                    indStat.innerHTML = `<span class="pass-text">${getIcon(true)} PASS - Safe operating Inductance</span>`;
                     indEl.className = "text-xl font-mono font-bold text-emerald-600";
                 } else {
-                    indStat.innerHTML = `<span class="fail-text">${getIcon(false)} FAIL - Out of Compliance</span>`;
+                    indStat.innerHTML = `<span class="fail-text">${getIcon(false)} WARNING - Could permanently damage Reader Module!</span>`;
                     indEl.className = "text-xl font-mono font-bold text-red-600";
                 }
 
@@ -404,11 +455,24 @@
                 qEl.innerText = Q.toFixed(2);
                 
                 if (Q >= 10.0 && Q <= 20.0) {
-                    qStat.innerHTML = `<span class="pass-text">${getIcon(true)} PASS - Optimal Tuning</span>`;
+                    qStat.innerHTML = `<span class="pass-text">${getIcon(true)} PASS - Antenna resonates efficiently</span>`;
                     qEl.className = "text-xl font-mono font-bold text-emerald-600";
                 } else {
-                    qStat.innerHTML = `<span class="fail-text">${getIcon(false)} FAIL - Out of Compliance</span>`;
+                    qStat.innerHTML = `<span class="fail-text">${getIcon(false)} FAIL - Out of Compliance (Degraded Range / Clipping)</span>`;
                     qEl.className = "text-xl font-mono font-bold text-red-600";
+                }
+
+                // Resistance Validation
+                const resEl = document.getElementById('outRes');
+                const resStat = document.getElementById('resStatus');
+                resEl.innerText = R.toFixed(2) + " Ω";
+
+                if (R >= 2.0 && R <= 4.0) {
+                    resStat.innerHTML = `<span class="pass-text">${getIcon(true)} PASS - Optimal Signal Attenuation</span>`;
+                    resEl.className = "text-xl font-mono font-bold text-emerald-600";
+                } else {
+                    resStat.innerHTML = `<span class="fail-text">${getIcon(false)} FAIL - Antenna trace resistance causes Q-factor limit breach</span>`;
+                    resEl.className = "text-xl font-mono font-bold text-red-600";
                 }
 
                 // Call Draw Function
