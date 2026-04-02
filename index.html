@@ -52,7 +52,6 @@
     </div>
 
     <!-- MAIN DASHBOARD -->
-    <!-- Changed grid layout limits so it spans the entire extremely wide screen continuously -->
     <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         
         <!-- Physical Parameters -->
@@ -138,52 +137,68 @@
             <div class="w-full flex-grow flex flex-col items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner min-h-[220px]">
                 <canvas id="pcb-canvas" width="400" height="400" class="w-full h-auto object-contain"></canvas>
             </div>
+            <div class="bg-white p-3 border border-slate-200 mt-4 rounded-lg shadow-sm w-full mx-auto">
+                <h3 class="text-[10px] font-bold text-slate-600 uppercase mb-2 border-b pb-1">Nominal Output Estimates</h3>
+                <div class="space-y-1 text-[11px] font-semibold text-slate-600">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Read Range:</span>
+                        <span id="readDist" class="font-bold text-emerald-600 font-mono">- cm</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Radiated Pow:</span>
+                        <span id="powerRad" class="font-bold text-blue-600 font-mono">- mW</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Electrical Results Output -->
         <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-slate-800 w-full h-full">
             <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-4 flex items-center gap-2">
                 <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                Base Parameters
+                Base Parameters & TI Requirements
             </h2>
-            <div class="space-y-3 flex-grow flex flex-col justify-between">
-                <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 shadow-sm flex flex-col gap-2">
-                    <div class="bg-white p-2 rounded shadow-sm">
-                        <div class="flex justify-between items-start">
-                            <span class="text-xs font-semibold text-slate-700">Inductance (L)</span>
-                            <span id="outInd" class="text-sm font-mono font-bold">0.00 µH</span>
-                        </div>
-                        <div id="indStatus" class="mt-1 text-[10px]"></div>
+            <div class="space-y-4 flex-grow flex flex-col justify-start">
+                
+                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xl relative overflow-hidden group hover:border-indigo-300 transition-colors">
+                    <div class="absolute right-0 top-0 w-8 h-full bg-indigo-50 -z-10 transition-transform group-hover:scale-110"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-sm font-bold text-slate-800">Inductance (L)</span>
+                        <span id="outInd" class="text-lg font-mono font-bold">0.00 µH</span>
                     </div>
-                    <div class="bg-white p-2 rounded shadow-sm">
-                        <div class="flex justify-between items-start">
-                            <span class="text-xs font-semibold text-slate-700">Quality Factor (Q)</span>
-                            <span id="outQ" class="text-sm font-mono font-bold">0.00</span>
-                        </div>
-                        <div id="qStatus" class="mt-1 text-[10px]"></div>
+                    <div class="text-[11px] text-slate-600 mb-2 border-b border-indigo-50 pb-2">
+                        <strong>MRD2 Target: 46.0 - 47.9 µH</strong> (Strict 47.0 µH Typ)<br>
+                        <em>Warning:</em> Failing this limit triggers severe mismatch, directly risking permanent damage to the reader module due to current reflection.
                     </div>
-                    <div class="bg-white p-2 rounded shadow-sm">
-                        <div class="flex justify-between items-start">
-                            <span class="text-xs font-semibold text-slate-700">Trace Resistance</span>
-                            <span id="outRes" class="text-sm font-mono font-bold">0.00 Ω</span>
-                        </div>
-                        <div id="resStatus" class="mt-1 text-[10px]"></div>
+                    <div id="indStatus" class="mt-1 text-xs"></div>
+                </div>
+                
+                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xl relative overflow-hidden group hover:border-amber-300 transition-colors">
+                    <div class="absolute right-0 top-0 w-8 h-full bg-amber-50 -z-10 transition-transform group-hover:scale-110"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-sm font-bold text-slate-800">Quality Factor (Q)</span>
+                        <span id="outQ" class="text-lg font-mono font-bold">0.00</span>
                     </div>
+                    <div class="text-[11px] text-slate-600 mb-2 border-b border-amber-50 pb-2">
+                        <strong>MRD2 Target: 10.0 - 20.0</strong><br>
+                        <em>Note:</em> Above 20, resonant bandwidth clips FDX subcarrier. Below 10, resonance is critically damped ruining read distance.
+                    </div>
+                    <div id="qStatus" class="mt-1 text-xs"></div>
+                </div>
+                
+                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xl relative overflow-hidden group hover:border-teal-300 transition-colors">
+                    <div class="absolute right-0 top-0 w-8 h-full bg-teal-50 -z-10 transition-transform group-hover:scale-110"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-sm font-bold text-slate-800">Trace Resistance</span>
+                        <span id="outRes" class="text-lg font-mono font-bold">0.00 Ω</span>
+                    </div>
+                    <div class="text-[11px] text-slate-600 mb-2 border-b border-teal-50 pb-2">
+                        <strong>Derived Target: ~1.5 - 4.5 Ω</strong><br>
+                        <em>Note:</em> High series resistance completely throttles TI driver transmit power. Requires wider traces or heavier copper thickness (2.0 oz).
+                    </div>
+                    <div id="resStatus" class="mt-1 text-xs"></div>
                 </div>
 
-                <div class="bg-white p-3 border border-slate-200 rounded-lg shadow-sm w-full mx-auto my-auto mt-3">
-                    <h3 class="text-[10px] font-bold text-slate-600 uppercase mb-2 border-b pb-1">Nominal Estimates</h3>
-                    <div class="space-y-1 text-[11px] font-semibold text-slate-600">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Read Range:</span>
-                            <span id="readDist" class="font-bold text-emerald-600 font-mono">- cm</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Radiated Pow:</span>
-                            <span id="powerRad" class="font-bold text-blue-600 font-mono">- mW</span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -247,7 +262,7 @@
                 <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1.1em;">
                     $$R_{dc} = \rho_{cu} \frac{L_{total}}{W_{tr} \times T_{cu}}$$
                 </div>
-                <div class="text-xs bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
+                <div class="text-xs bg-white p-4 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
                     <p class="mb-2 italic text-slate-500">Defines the baseline attenuation before AC skin-depth characteristics take effect.</p>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>\(\rho_{cu}\): Copper Resistivity (\(1.68 \times 10^{-8} \, \Omega{\cdot}m\))</li>
@@ -266,7 +281,7 @@
                 <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1em;">
                     $$L = \frac{\mu_{0} N^{2} d_{avg} c_{1}}{2} \Big[ \ln(\frac{c_{2}}{\rho}) + c_{3}\rho + c_{4}\rho^{2} \Big]$$
                 </div>
-                <div class="text-[11px] bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
+                <div class="text-xs bg-white p-4 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
                     <p class="mb-2 italic text-slate-500">An industry standard empirical formulation for square/rectangular planar spiraled inductors.</p>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>\(\mu_{0}\): Vacuum permeability (\(4\pi \cdot 10^{-7}\))</li>
@@ -282,19 +297,19 @@
             <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col h-full w-full">
                 <h3 class="font-bold text-slate-800 mb-3 text-md flex items-center gap-2">
                     <span class="bg-amber-100 text-amber-800 font-mono px-2 py-0.5 rounded shadow-sm text-sm">3</span> 
-                    Quality Factor & Tolerance
+                    Quality Factor & Diagnostics
                 </h3>
                 <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1.1em;">
-                    $$Q = \frac{X_{L}}{R} = \frac{2 \pi f L}{R}$$
+                    $$Q = \frac{X_{L}}{R} \implies \frac{2 \pi f L}{R}$$
                 </div>
-                <div class="text-[11px] bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
+                <div class="text-xs bg-white p-4 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
                     <p class="mb-2 italic text-slate-500">Dictates the resonance efficiency and FDX operational bandwidth envelope.</p>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>\(f\): Target Operating Frequency (134.2 kHz)</li>
                         <li>Target \(L\) for MRD2: 47.0 µH</li>
                         <li>Target \(Q\) for MRD2: 10 to 20</li>
                     </ul>
-                    <p class="mt-2 text-[10px] text-slate-400 font-semibold border-t pt-2">Ref: Texas Instruments RI-STU-MRD2 Antenna Design Guide (Target Specs).</p>
+                    <p class="mt-2 text-[10px] text-slate-400 font-semibold border-t pt-2">Ref: Texas Instruments RI-STU-MRD2 Target Engineering Specifications.</p>
                 </div>
             </div>
         </div>
@@ -484,7 +499,6 @@
             const tolVal = parseFloat(document.getElementById('tolVal').value || 10) / 100.0;
 
             const errDiv = document.getElementById('error-msg');
-            const resDiv = document.getElementById('results-container');
             const tolDiv = document.getElementById('tolOutputs');
 
             try {
@@ -523,31 +537,31 @@
                 const indEl = document.getElementById('outInd'); const indStat = document.getElementById('indStatus');
                 indEl.innerText = base.L_uH.toFixed(2) + " µH";
                 if (base.L_uH >= 46.0 && base.L_uH <= 47.9) {
-                    indStat.innerHTML = `<span class="pass-text">${getIcon(true)} Safe Range</span>`;
-                    indEl.className = "text-md font-mono font-bold text-emerald-600";
+                    indStat.innerHTML = `<span class="pass-text">${getIcon(true)} Valid</span>`;
+                    indEl.className = "text-xl font-mono font-bold text-emerald-600";
                 } else {
-                    indStat.innerHTML = `<span class="fail-text">${getIcon(false)} Out of Spec</span>`;
-                    indEl.className = "text-md font-mono font-bold text-red-600";
+                    indStat.innerHTML = `<span class="fail-text">${getIcon(false)} Critical Fail</span>`;
+                    indEl.className = "text-xl font-mono font-bold text-red-600";
                 }
 
                 const qEl = document.getElementById('outQ'); const qStat = document.getElementById('qStatus');
                 qEl.innerText = base.Q.toFixed(2);
                 if (base.Q >= 10.0 && base.Q <= 20.0) {
-                    qStat.innerHTML = `<span class="pass-text">${getIcon(true)} Optimal Bandwidth</span>`;
-                    qEl.className = "text-md font-mono font-bold text-emerald-600";
+                    qStat.innerHTML = `<span class="pass-text">${getIcon(true)} Valid</span>`;
+                    qEl.className = "text-xl font-mono font-bold text-emerald-600";
                 } else {
-                    qStat.innerHTML = `<span class="fail-text">${getIcon(false)} Out of Spec</span>`;
-                    qEl.className = "text-md font-mono font-bold text-red-600";
+                    qStat.innerHTML = `<span class="fail-text">${getIcon(false)} Limit Exceeded</span>`;
+                    qEl.className = "text-xl font-mono font-bold text-red-600";
                 }
 
                 const resEl = document.getElementById('outRes'); const resStat = document.getElementById('resStatus');
                 resEl.innerText = base.R.toFixed(2) + " Ω";
                 if (base.R >= 1.5 && base.R <= 4.5) {
                     resStat.innerHTML = `<span class="pass-text">${getIcon(true)} Valid</span>`;
-                    resEl.className = "text-md font-mono font-bold text-emerald-600";
+                    resEl.className = "text-xl font-mono font-bold text-emerald-600";
                 } else {
-                    resStat.innerHTML = `<span class="fail-text">${getIcon(false)} High Impedance</span>`;
-                    resEl.className = "text-md font-mono font-bold text-red-600";
+                    resStat.innerHTML = `<span class="fail-text">${getIcon(false)} Heavy Attenuation</span>`;
+                    resEl.className = "text-xl font-mono font-bold text-red-600";
                 }
 
                 let gradeClass = "badge-poor"; let gradeText = "Fails Req";
