@@ -22,11 +22,32 @@ To replicate this specific RFID implementation for the cleanroom conveyor, or to
 | **RFID Reader** | `RI-STU-MRD2` | Texas Instruments 134.2 kHz Microreader. Handles HDX/FDX communication, antenna driving, and raw tag decoding. |
 | **Microcontroller** | `STM32F407ZGT6` | Cortex-M4 MCU. Acts as the host system, receives decoded tag data from the MRD2 module via UART/SPI, processes business logic, and pipes data up to the factory backend. |
 | **Ethernet PHY** | `LAN8710A-EZC` | Microchip 10/100 Ethernet Transceiver. Enables high-speed, reliable factory network integration for the STM32 to transmit pod tracking data. |
+| **Antenna Cable** | [Belden 1032A](https://www.digikey.my/en/products/detail/belden-inc/1032A-01010000/8122235) | 18 AWG 7x26 Stranded Bare Copper. Industrial-grade shielded cable for surviving conveyor vibrations. |
 
 ### Evaluation Environment
 If you are rapidly prototyping this system, you do not need to build a custom MCU board from scratch. You can utilize the following commercial off-the-shelf Evaluation Board which natively supports the STM32 target and Ethernet PHY:
 * **Board:** [Olimex STM32-E407 (Open Source Hardware)](https://www.olimex.com/Products/ARM/ST/STM32-E407/open-source-hardware)
 * **Setup Instructions:** Once you have the Olimex board and the MRD2 reader module, connect the MRD2's TX/RX outputs directly to one of the STM32-E407's exposed UART or SPI peripheral headers. Tune the PCB antenna using the calculator below, connect it to the MRD2, and boot up the system.
+
+---
+
+## 🧶 Interconnect & Cable Analysis (Belden 1032A)
+
+Selecting the right cable between the TI MRD2 and the PCB Antenna is critical for maintaining the carefully calculated Q-Factor and ensuring long-term mechanical reliability on a moving conveyor.
+
+### 1. Resistance & Wire Gauge (Grade: A+)
+*   **Spec:** 18 AWG Stranded Bare Copper, 5.86 Ω/1000ft.
+*   **The Math:** 5.86 Ω/1000ft ≈ **0.019 Ω/meter**.
+*   **System Impact:** For a 2-meter cable (4m round-trip), you add only **~0.076 Ω**.
+*   **Real-World Result:** If your PCB antenna baseline is 2.72 Ω, the total series resistance becomes ~2.8 Ω. This drops the Q-Factor from 14.5 to **~14.1**, which remains perfectly within the TI target range (10–20).
+*   **Mechanical Bonus:** The **7x26 stranded** construction provides high flexibility, ensuring the cable survives factory floor vibrations without fatigue snapping.
+
+### 2. Parasitic Capacitance (Grade: B)
+*   **Spec:** Cond-to-Cond Capacitance is **170 pF/m**.
+*   **Analysis:** While higher than the Belden 8760 (100 pF/m), it is still highly usable for our 134.2 kHz target.
+*   **The Math:** A 47 µH antenna requires roughly **30,000 pF (30 nF)** of total circuit capacitance to resonate at 134.2 kHz.
+*   **System Impact:** 2 meters of this cable adds **340 pF**, creating only a **1.1% shift** in total capacitance.
+*   **Tuning:** The TI RI-STU-MRD2 features an advanced auto-tuning circuit that easily compensates for a 1% shift upon startup initialization.
 
 ---
 
