@@ -11,6 +11,25 @@ This repository contains the design parameters, calculations, and an interactive
 
 This project is geared toward designing an RFID antenna for a **cleanroom conveyor system**, where pods move at a speed of 0.5 m/s. The system relies on 32mm HDX glass tags to reliably identify the moving pods. To ensure reliable, continuous reading within strict spatial constraints, the antenna must be a **rectangular planar spiral** trace integrated directly onto a printed circuit board (PCB).
 
+---
+
+## 🔌 Hardware Selection & Replication
+
+To replicate this specific RFID implementation for the cleanroom conveyor, or to understand the exact hardware driving this integration, use the following strictly specified components:
+
+| Component | Part Number / Module | Description |
+|-----------|--------------------|-------------|
+| **RFID Reader** | `RI-STU-MRD2` | Texas Instruments 134.2 kHz Microreader. Handles HDX/FDX communication, antenna driving, and raw tag decoding. |
+| **Microcontroller** | `STM32F407ZGT6` | Cortex-M4 MCU. Acts as the host system, receives decoded tag data from the MRD2 module via UART/SPI, processes business logic, and pipes data up to the factory backend. |
+| **Ethernet PHY** | `LAN8710A-EZC` | Microchip 10/100 Ethernet Transceiver. Enables high-speed, reliable factory network integration for the STM32 to transmit pod tracking data. |
+
+### Evaluation Environment
+If you are rapidly prototyping this system, you do not need to build a custom MCU board from scratch. You can utilize the following commercial off-the-shelf Evaluation Board which natively supports the STM32 target and Ethernet PHY:
+* **Board:** [Olimex STM32-E407 (Open Source Hardware)](https://www.olimex.com/Products/ARM/ST/STM32-E407/open-source-hardware)
+* **Setup Instructions:** Once you have the Olimex board and the MRD2 reader module, connect the MRD2's TX/RX outputs directly to one of the STM32-E407's exposed UART or SPI peripheral headers. Tune the PCB antenna using the calculator below, connect it to the MRD2, and boot up the system.
+
+---
+
 ## ⚙️ Strict Hardware Requirements
 
 The TI RI-STU-MRD2 is a precision microreader. Operating an incorrectly tuned antenna can cause poor read range or permanent damage to the reader hardware. The electrical requirements must strictly fall within the following parameters:
