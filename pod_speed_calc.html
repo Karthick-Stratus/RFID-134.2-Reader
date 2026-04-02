@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conveyor Pod Speed Calculator - TI RI-STU-MRD2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
+        .font-mono { font-family: 'Roboto Mono', monospace; }
+        
+        .industrial-panel {
+            background: #1e293b;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+        }
+        
+        .input-box {
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #f8fafc;
+            transition: all 0.2s ease;
+        }
+        .input-box:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .metric-card-max {
+            background: linear-gradient(145deg, #1e1b4b, #312e81);
+            border-left: 4px solid #6366f1;
+        }
+        
+        .metric-card-opt {
+            background: linear-gradient(145deg, #064e3b, #0f766e);
+            border-left: 4px solid #10b981;
+        }
+        
+        .glass-header {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid #334155;
+        }
+    </style>
+</head>
+<body class="w-full">
+
+    <header class="glass-header w-full p-4 md:p-6 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                    <svg class="w-8 h-8 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Conveyor Pod Speed Calculator
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">TI RI-STU-MRD2 | HDX Read-Cycle Synchronization</p>
+            </div>
+            <a href="index.html" class="flex items-center gap-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
+                Back to PCB Antenna Tuner
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-grow w-full p-4 md:p-8 flex items-center justify-center">
+        <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- LEFT COLUMN: INPUTS -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                
+                <div class="industrial-panel rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-sky-500"></div>
+                    <h2 class="text-xl font-bold mb-5 flex items-center gap-2 text-slate-100">
+                        <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                        Physical Hardware Limit
+                    </h2>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Antenna Length Parallel to Belt (mm)</label>
+                            <div class="relative">
+                                <input type="number" id="antLength" value="100" class="input-box w-full rounded-lg px-4 py-3 font-mono text-lg" step="0.1" oninput="calculateSpeed()">
+                                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">mm</div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-1">The physical reading window length relative to the conveyor direction.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="industrial-panel rounded-xl p-6 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+                    <h2 class="text-xl font-bold mb-5 flex items-center gap-2 text-slate-100">
+                        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        HDX Timing Sequence
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Charge Phase (ms)</label>
+                            <div class="relative">
+                                <input type="number" id="chargeTime" value="50" class="input-box w-full rounded-lg px-4 py-2 font-mono text-base" step="1" oninput="calculateSpeed()">
+                                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">ms</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Listen Phase (ms)</label>
+                            <div class="relative">
+                                <input type="number" id="listenTime" value="20" class="input-box w-full rounded-lg px-4 py-2 font-mono text-base" step="1" oninput="calculateSpeed()">
+                                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">ms</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Reader Processing Overhead (ms)</label>
+                            <div class="relative">
+                                <input type="number" id="overheadTime" value="30" class="input-box w-full rounded-lg px-4 py-2 font-mono text-base" step="1" oninput="calculateSpeed()">
+                                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">ms</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: OUTPUTS -->
+            <div class="lg:col-span-7 flex flex-col gap-6 h-full">
+
+                <!-- Cycle Indicator -->
+                <div class="industrial-panel rounded-xl p-6 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-1">Total Cycle Time (T)</h3>
+                        <p class="text-slate-500 text-xs">Total duration of a single charge-listen interrogator pulse.</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-3xl font-mono font-bold text-sky-400" id="totalCycleOut">0.0 ms</div>
+                        <div class="text-xs font-mono text-slate-500 mt-1" id="totalCycleSecOut">0.000 s</div>
+                    </div>
+                </div>
+
+                <!-- Maximum Speed -->
+                <div class="industrial-panel rounded-xl flex flex-col flex-grow metric-card-max relative overflow-hidden p-8 justify-center">
+                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <svg class="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    
+                    <h3 class="text-base font-bold text-indigo-200 uppercase tracking-widest mb-2 flex items-center gap-2 z-10">
+                        Absolute Maximum Speed
+                    </h3>
+                    
+                    <div class="flex items-baseline gap-3 z-10">
+                        <span id="maxSpeedOut" class="text-6xl md:text-7xl font-mono font-extrabold text-white">0.00</span>
+                        <span class="text-2xl font-bold text-indigo-300">m/s</span>
+                    </div>
+                    
+                    <div class="mt-6 bg-black/20 p-4 rounded-lg border border-indigo-500/30 z-10">
+                        <p class="text-sm text-indigo-100 italic">
+                            <strong>Theoretical Limit:</strong> The pod will be within the antenna's read window for exactly <strong>2 full cycles</strong>. Dropping any cycles due to noise will result in a missed read.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Optimal Speed -->
+                <div class="industrial-panel rounded-xl flex flex-col flex-grow metric-card-opt relative overflow-hidden p-8 justify-center">
+                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <svg class="w-32 h-32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+
+                    <h3 class="text-base font-bold text-emerald-200 uppercase tracking-widest mb-2 flex items-center gap-2 z-10">
+                        Optimal Target Speed
+                    </h3>
+                    
+                    <div class="flex items-baseline gap-3 z-10">
+                        <span id="optSpeedOut" class="text-6xl md:text-7xl font-mono font-extrabold text-white">0.00</span>
+                        <span class="text-2xl font-bold text-emerald-300">m/s</span>
+                    </div>
+                    
+                    <div class="mt-6 bg-black/20 p-4 rounded-lg border border-emerald-500/30 z-10">
+                        <p class="text-sm text-emerald-100 italic">
+                            <strong>Engineering Target:</strong> The pod remains over the antenna for exactly <strong>3 full cycles</strong>. This provides a safe buffer for electrical noise or environmental interference.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+            
+        </div>
+    </main>
+
+    <script>
+        function calculateSpeed() {
+            // Fetch inputs
+            const antLength_mm = parseFloat(document.getElementById('antLength').value) || 0;
+            const charge_ms = parseFloat(document.getElementById('chargeTime').value) || 0;
+            const listen_ms = parseFloat(document.getElementById('listenTime').value) || 0;
+            const overhead_ms = parseFloat(document.getElementById('overheadTime').value) || 0;
+
+            // Geometry conversions
+            const antLength_m = antLength_mm / 1000.0;
+
+            // Cycle Time Math
+            const cycle_ms = charge_ms + listen_ms + overhead_ms;
+            const cycle_s = cycle_ms / 1000.0;
+
+            // Output Cycle Time
+            document.getElementById('totalCycleOut').innerText = cycle_ms.toFixed(1) + " ms";
+            document.getElementById('totalCycleSecOut').innerText = cycle_s.toFixed(3) + " s";
+
+            if (cycle_s <= 0 || antLength_m <= 0) {
+                document.getElementById('maxSpeedOut').innerText = "0.00";
+                document.getElementById('optSpeedOut').innerText = "0.00";
+                return;
+            }
+
+            // Speed computations
+            const max_speed = antLength_m / (2 * cycle_s);
+            const opt_speed = antLength_m / (3 * cycle_s);
+
+            // Out outputs (with standard m/s formatting)
+            document.getElementById('maxSpeedOut').innerText = max_speed.toFixed(3);
+            document.getElementById('optSpeedOut').innerText = opt_speed.toFixed(3);
+        }
+
+        // Run once on load to populate defaults
+        window.onload = calculateSpeed;
+    </script>
+</body>
+</html>
