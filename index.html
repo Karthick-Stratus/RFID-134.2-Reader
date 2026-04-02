@@ -9,7 +9,7 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; overflow-x: hidden; }
         .input-field { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.875rem; transition: border-color 0.2s;}
         .input-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
         .pass-text { color: #059669; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;}
@@ -17,7 +17,7 @@
         .glass-panel { background: rgba(255, 255, 255, 0.98); border: 1px solid rgba(0,0,0,0.05); }
         .MathJax { color: #1e293b !important; font-size: 0.95em !important; }
         #pcb-canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; border-radius: 0.5rem; background-color: #064e3b; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); border: 2px solid #0f172a;}
-        .metric-badge { display: inline-flex; align-items: center; justify-content: center; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .metric-badge { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
         .badge-excellent { background-color: #dcfce7; color: #166534; border: 1px solid #4ade80;}
         .badge-best { background-color: #dbeafe; color: #1e40af; border: 1px solid #60a5fa;}
         .badge-good { background-color: #fef9c3; color: #854d0e; border: 1px solid #facc15;}
@@ -25,26 +25,26 @@
         .badge-poor { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171;}
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+<body class="min-h-screen p-4 md:p-6 flex flex-col items-center w-full">
 
-    <div class="max-w-7xl w-full flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+    <div class="w-full flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div class="text-center md:text-left">
             <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight">TI RI-STU-MRD2 PCB Antenna System</h1>
             <p class="text-slate-500 mt-2">134.2 kHz Planar Spiral Coil Calculator</p>
         </div>
-        <div class="flex flex-col gap-3">
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-center gap-3">
                 <span class="text-xs font-bold text-slate-500 uppercase">Input Unit:</span>
                 <select id="unit-selector" class="input-field py-1 px-2 w-auto bg-slate-50 font-bold" onchange="toggleUnit()">
                     <option value="mm" selected>Millimeters (mm)</option>
                     <option value="mils">Mils</option>
                 </select>
             </div>
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-center gap-2">
                 <select id="saved-configs" class="input-field py-1 px-2 w-32 bg-slate-50 text-xs" onchange="loadConfig()">
                     <option value="">Load Preset...</option>
                 </select>
-                <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded shadow transition-colors">
+                <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded shadow transition-colors flex-shrink-0">
                     Save Current
                 </button>
             </div>
@@ -52,10 +52,11 @@
     </div>
 
     <!-- MAIN DASHBOARD -->
-    <div class="max-w-7xl w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <!-- Changed grid layout limits so it spans the entire extremely wide screen continuously -->
+    <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         
         <!-- Physical Parameters -->
-        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-blue-500">
+        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-blue-500 w-full h-full">
             <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-4 flex items-center gap-2">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
                 Physical Params
@@ -122,30 +123,30 @@
                     </div>
                 </div>
             </div>
-            <div id="error-msg" class="hidden mt-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-xs shadow-sm"></div>
+            <div id="error-msg" class="hidden mt-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-xs shadow-sm w-full break-words"></div>
         </div>
 
         <!-- Simulation Visualization -->
-        <div class="glass-panel text-slate-800 rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-emerald-500">
-            <h2 class="text-lg font-bold tracking-tight mb-3 flex items-center justify-between">
-                <div class="flex items-center gap-2">
+        <div class="glass-panel text-slate-800 rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-emerald-500 w-full h-full">
+            <div class="flex flex-row items-center justify-between pb-3 mb-2 border-b border-gray-100">
+                <h2 class="text-lg font-bold tracking-tight flex items-center gap-2 whitespace-nowrap">
                     <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                    Tuning Simulation
-                </div>
-                <div id="antennaGrade"></div>
-            </h2>
+                    Tuning Sim
+                </h2>
+                <div id="antennaGrade" class="flex-shrink-0"></div>
+            </div>
             <div class="w-full flex-grow flex flex-col items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner min-h-[220px]">
-                <canvas id="pcb-canvas" width="300" height="300" class="max-w-full"></canvas>
+                <canvas id="pcb-canvas" width="400" height="400" class="w-full h-auto object-contain"></canvas>
             </div>
         </div>
 
         <!-- Electrical Results Output -->
-        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-slate-800">
+        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-slate-800 w-full h-full">
             <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-4 flex items-center gap-2">
                 <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 Base Parameters
             </h2>
-            <div class="space-y-3 flex-grow">
+            <div class="space-y-3 flex-grow flex flex-col justify-between">
                 <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 shadow-sm flex flex-col gap-2">
                     <div class="bg-white p-2 rounded shadow-sm">
                         <div class="flex justify-between items-start">
@@ -170,16 +171,16 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-3 border border-slate-200 rounded-lg shadow-sm">
-                    <h3 class="text-[10px] font-bold text-slate-600 uppercase mb-2 border-b pb-1">Real-World Estimates</h3>
-                    <div class="space-y-1 text-xs">
+                <div class="bg-white p-3 border border-slate-200 rounded-lg shadow-sm w-full mx-auto my-auto mt-3">
+                    <h3 class="text-[10px] font-bold text-slate-600 uppercase mb-2 border-b pb-1">Nominal Estimates</h3>
+                    <div class="space-y-1 text-[11px] font-semibold text-slate-600">
                         <div class="flex justify-between">
                             <span class="text-slate-500">Read Range:</span>
-                            <span id="readDist" class="font-bold text-slate-800 font-mono">- cm</span>
+                            <span id="readDist" class="font-bold text-emerald-600 font-mono">- cm</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-slate-500">Radiated Pow:</span>
-                            <span id="powerRad" class="font-bold text-slate-800 font-mono">- mW</span>
+                            <span id="powerRad" class="font-bold text-blue-600 font-mono">- mW</span>
                         </div>
                     </div>
                 </div>
@@ -187,62 +188,63 @@
         </div>
 
         <!-- Fab Tolerance Simulator -->
-        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-purple-500 lg:col-span-1">
+        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-purple-500 w-full h-full lg:col-span-1">
             <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                     Fab Tolerance
                 </div>
             </h2>
-            <div class="bg-purple-50 p-3 rounded-lg border border-purple-100 mb-3 text-xs">
+            <div class="bg-purple-50 p-3 rounded-lg border border-purple-100 mb-3 text-xs flex-shrink-0">
                 <div class="flex items-center justify-between mb-3 border-b border-purple-200 pb-2">
-                    <span class="font-bold text-purple-800">Activate Tolerance</span>
+                    <span class="font-bold text-purple-800">Activate Check</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="tolActive" class="sr-only peer" onchange="calculate()">
                         <div class="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-purple-600"></div>
                     </label>
                 </div>
-                <label class="block font-semibold text-slate-700 mb-1">Etch Variance (±%)</label>
-                <input type="number" id="tolVal" value="10" step="1" min="1" max="50" class="input-field bg-white py-1 mb-2" oninput="calculate()">
-                <p class="text-[10px] text-purple-700 leading-tight">Simulates High and Low bounds based on trace over/under-etching.</p>
+                <div class="flex justify-between items-center gap-2">
+                    <label class="block font-semibold text-slate-700 whitespace-nowrap">Etch Var (±%)</label>
+                    <input type="number" id="tolVal" value="10" step="1" min="1" max="50" class="input-field bg-white py-1 w-20 text-right" oninput="calculate()">
+                </div>
             </div>
 
-            <div id="tolOutputs" class="hidden flex-col gap-2 overflow-y-auto max-h-[200px] pr-1">
-                <div class="bg-white border border-slate-200 p-2 rounded shadow-sm text-xs">
-                    <div class="font-bold text-slate-700 mb-1 text-[11px] uppercase border-b pb-1">Under-Etch (Wider Traces)</div>
-                    <div class="flex justify-between"><span>Inductance:</span> <span id="tol_UE_L" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between"><span>Q Factor:</span> <span id="tol_UE_Q" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between"><span>Resistance:</span> <span id="tol_UE_R" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between border-t border-dashed mt-1 pt-1"><span>Distance:</span> <span id="tol_UE_Dist" class="font-mono text-emerald-600"></span></div>
-                    <div class="flex justify-between"><span>Power:</span> <span id="tol_UE_Pow" class="font-mono text-blue-600"></span></div>
+            <div id="tolOutputs" class="hidden flex-col gap-2 overflow-y-auto w-full pr-1 flex-grow scrollbar-thin scrollbar-thumb-gray-300 min-h-[150px]">
+                <div class="bg-white border border-slate-200 p-2 rounded shadow-sm text-[11px] w-full">
+                    <div class="font-bold text-slate-700 mb-1 tracking-wider uppercase border-b border-slate-100 pb-1">Under-Etch (Wider)</div>
+                    <div class="flex justify-between my-0.5"><span>Ind:</span> <span id="tol_UE_L" class="font-mono font-bold"></span></div>
+                    <div class="flex justify-between my-0.5"><span>Q:</span> <span id="tol_UE_Q" class="font-mono font-bold"></span></div>
+                    <div class="flex justify-between my-0.5"><span>Res:</span> <span id="tol_UE_R" class="font-mono font-bold"></span></div>
+                    <div class="flex justify-between border-t border-dashed mt-1 pt-1 opacity-90"><span>Dst:</span> <span id="tol_UE_Dist" class="font-mono text-emerald-700 font-bold"></span></div>
+                    <div class="flex justify-between opacity-90"><span>Pow:</span> <span id="tol_UE_Pow" class="font-mono text-blue-700 font-bold"></span></div>
                 </div>
-                <div class="bg-white border border-slate-200 p-2 rounded shadow-sm text-xs">
-                    <div class="font-bold text-slate-700 mb-1 text-[11px] uppercase border-b pb-1">Over-Etch (Thinner Traces)</div>
-                    <div class="flex justify-between"><span>Inductance:</span> <span id="tol_OE_L" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between"><span>Q Factor:</span> <span id="tol_OE_Q" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between"><span>Resistance:</span> <span id="tol_OE_R" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between border-t border-dashed mt-1 pt-1"><span>Distance:</span> <span id="tol_OE_Dist" class="font-mono text-emerald-600"></span></div>
-                    <div class="flex justify-between"><span>Power:</span> <span id="tol_OE_Pow" class="font-mono text-blue-600"></span></div>
+                <div class="bg-white border border-slate-200 p-2 rounded shadow-sm text-[11px] w-full">
+                    <div class="font-bold text-slate-700 mb-1 tracking-wider uppercase border-b border-slate-100 pb-1">Over-Etch (Thinner)</div>
+                    <div class="flex justify-between my-0.5"><span>Ind:</span> <span id="tol_OE_L" class="font-mono font-bold"></span></div>
+                    <div class="flex justify-between my-0.5"><span>Q:</span> <span id="tol_OE_Q" class="font-mono font-bold"></span></div>
+                    <div class="flex justify-between my-0.5"><span>Res:</span> <span id="tol_OE_R" class="font-mono font-bold"></span></div>
+                    <div class="flex justify-between border-t border-dashed mt-1 pt-1 opacity-90"><span>Dst:</span> <span id="tol_OE_Dist" class="font-mono text-emerald-700 font-bold"></span></div>
+                    <div class="flex justify-between opacity-90"><span>Pow:</span> <span id="tol_OE_Pow" class="font-mono text-blue-700 font-bold"></span></div>
                 </div>
             </div>
         </div>
     </div> <!-- END MAIN DASHBOARD -->
 
     <!-- DETAILED MATHEMATICS & REFERENCES -->
-    <div class="max-w-7xl w-full glass-panel rounded-xl shadow-lg p-6 lg:p-10 mb-10 text-slate-700 border-t-4 border-t-amber-500">
+    <div class="w-full glass-panel rounded-xl shadow-lg p-6 lg:p-10 mb-10 text-slate-700 border-t-4 border-t-amber-500">
         <h2 class="text-2xl font-bold text-slate-800 tracking-tight mb-6 flex items-center gap-2 border-b pb-3 border-slate-200">
             <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
             Complete Calculation Theory & Reference
         </h2>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
             <!-- 1. Resistance -->
-            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col">
+            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col h-full w-full">
                 <h3 class="font-bold text-slate-800 mb-3 text-md flex items-center gap-2">
                     <span class="bg-blue-100 text-blue-800 font-mono px-2 py-0.5 rounded shadow-sm text-sm">1</span> 
                     Trace Resistance
                 </h3>
-                <div class="overflow-x-auto text-center mb-4" style="font-size: 1.1em;">
+                <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1.1em;">
                     $$R_{dc} = \rho_{cu} \frac{L_{total}}{W_{tr} \times T_{cu}}$$
                 </div>
                 <div class="text-xs bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
@@ -256,43 +258,43 @@
             </div>
 
             <!-- 2. Wheeler Formula -->
-            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col">
+            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col h-full w-full">
                 <h3 class="font-bold text-slate-800 mb-3 text-md flex items-center gap-2">
                     <span class="bg-emerald-100 text-emerald-800 font-mono px-2 py-0.5 rounded shadow-sm text-sm">2</span> 
                     Modified Wheeler Formula
                 </h3>
-                <div class="overflow-x-auto text-center mb-4" style="font-size: 1em;">
+                <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1em;">
                     $$L = \frac{\mu_{0} N^{2} d_{avg} c_{1}}{2} \Big[ \ln(\frac{c_{2}}{\rho}) + c_{3}\rho + c_{4}\rho^{2} \Big]$$
                 </div>
-                <div class="text-xs bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
+                <div class="text-[11px] bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
                     <p class="mb-2 italic text-slate-500">An industry standard empirical formulation for square/rectangular planar spiraled inductors.</p>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>\(\mu_{0}\): Vacuum permeability (\(4\pi \cdot 10^{-7}\))</li>
                         <li>\(\rho\): Fill Factor \((D_{out} - D_{in}) / (D_{out} + D_{in})\)</li>
                         <li>\(d_{avg}\): Average Diameter \((L_{avg} \cdot W_{avg})\)</li>
-                        <li>\(C_1=1.27, C_2=2.07, C_3=0.18, C_4=0.13\) (Rectangular specific coefficients)</li>
+                        <li>\(C_1=1.27, C_2=2.07, C_3=0.18, C_4=0.13\)</li>
                     </ul>
                     <p class="mt-2 text-[10px] text-slate-400 font-semibold border-t pt-2">Ref: S. Mohan et al., "Simple Accurate Expressions for Planar Spiral Inductances" (IEEE 1999).</p>
                 </div>
             </div>
 
             <!-- 3. Quality Factor -->
-            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col">
+            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col h-full w-full">
                 <h3 class="font-bold text-slate-800 mb-3 text-md flex items-center gap-2">
                     <span class="bg-amber-100 text-amber-800 font-mono px-2 py-0.5 rounded shadow-sm text-sm">3</span> 
                     Quality Factor & Tolerance
                 </h3>
-                <div class="overflow-x-auto text-center mb-4" style="font-size: 1.1em;">
+                <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1.1em;">
                     $$Q = \frac{X_{L}}{R} = \frac{2 \pi f L}{R}$$
                 </div>
-                <div class="text-xs bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
+                <div class="text-[11px] bg-white p-3 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
                     <p class="mb-2 italic text-slate-500">Dictates the resonance efficiency and FDX operational bandwidth envelope.</p>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>\(f\): Target Operating Frequency (134.2 kHz)</li>
                         <li>Target \(L\) for MRD2: 47.0 µH</li>
                         <li>Target \(Q\) for MRD2: 10 to 20</li>
                     </ul>
-                    <p class="mt-2 text-[10px] text-slate-400 font-semibold border-t pt-2">Ref: Texas Instruments RI-STU-MRD2 Antenna Design Guide (Target Specifications).</p>
+                    <p class="mt-2 text-[10px] text-slate-400 font-semibold border-t pt-2">Ref: Texas Instruments RI-STU-MRD2 Antenna Design Guide (Target Specs).</p>
                 </div>
             </div>
         </div>
@@ -416,21 +418,18 @@
             ctx.stroke();
         }
 
-        // Logic Calculator
         function computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, shiftTolPercent=0) {
             const freq = 134200; 
             const rho_cu = 1.68e-8; 
             const mu0 = 4 * Math.PI * 1e-7;
 
-            // Apply specific physical tolerance (shiftTol < 0 = under-etch (wide), shiftTol > 0 = over-etch (narrow)).
-            // Assumes constant pitch. So w + s = w_eff + s_eff. Example: w + 10% -> s - 10%.
             const pitch = w + s;
             let w_eff = w * (1 - shiftTolPercent);
             let s_eff = pitch - w_eff;
-            if (s_eff <= 0.01) s_eff = 0.01; // Avoid literal shorts
+            if (s_eff <= 0.01) s_eff = 0.01; 
 
             const cu_thick = cu_oz * 0.035; 
-            const L_in = L_out - 2*N*pitch; // Pitch remains identical, inside dims don't shrink
+            const L_in = L_out - 2*N*pitch; 
             const W_in = W_out - 2*N*pitch;
 
             if (L_in <= 0 || W_in <= 0) { throw new Error(`Overlapping traces detected at center.`); }
@@ -455,24 +454,18 @@
             const fill_ratio = (d_out - d_in) / (d_out + d_in);
             
             const c1 = 1.27, c2 = 2.07, c3 = 0.18, c4 = 0.13;
-            // Notice: L doesn't change massively if pitch is constant, but Wheeler relies slightly on fill ratio. 
-            // In reality trace width impacts parasitic capacitance, self-resonance frequency. L shifts fractionally.
             const L_est = (mu0 * Math.pow(N, 2) * d_avg * c1 / 2) * (Math.log(c2 / fill_ratio) + c3 * fill_ratio + c4 * Math.pow(fill_ratio, 2));
             
-            // To simulate slight inductance shifts due to trace width geometry modifying self-inductance:
-            // Approximate geometric change modifier for planar inductors based on width vs spacing
-            let self_induct_modifier = 1 + (shiftTolPercent * 0.05); // Empirical fractional sensitivity
+            let self_induct_modifier = 1 + (shiftTolPercent * 0.05); 
             let finalL = L_est * 1e6 * self_induct_modifier;
 
             const XL = 2 * Math.PI * freq * (finalL * 1e-6);
             const Q = XL / R;
 
-            // Reading Distance Math
             const diagLength = Math.sqrt(L_out*L_out + W_out*W_out); 
             let distEst = (diagLength * 0.95) * (Q / 15.0); 
-            distEst = Math.max(10, Math.min(distEst, 350)) / 10; // cm
+            distEst = Math.max(10, Math.min(distEst, 350)) / 10; 
             
-            // Radiated Power Math
             let radPower = (R * Math.pow(0.2, 2)) * 1000;
 
             return {L_uH: finalL, Q: Q, R: R, Dist: distEst, Power: radPower};
@@ -488,7 +481,6 @@
             const mat = document.getElementById('pcbMat').value;
 
             const tolActive = document.getElementById('tolActive').checked;
-            // E.g. tolVal = 10 -> 0.10
             const tolVal = parseFloat(document.getElementById('tolVal').value || 10) / 100.0;
 
             const errDiv = document.getElementById('error-msg');
@@ -500,16 +492,12 @@
                     throw new Error("Missing parameters.");
                 }
 
-                // Compute Baseline
                 const base = computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, 0);
 
-                // Compute Tolerance Bounds
                 if(tolActive) {
                     tolDiv.style.display = 'flex';
                     try {
-                        // Under-Etch (Wider trace, narrower spacing, negative shift)
                         const UE = computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, -tolVal);
-                        // Over-Etch (Thinner trace, wider spacing, positive shift)
                         const OE = computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, tolVal);
                         
                         document.getElementById('tol_UE_L').innerText = `${UE.L_uH.toFixed(2)} µH`;
@@ -530,7 +518,6 @@
                     tolDiv.style.display = 'none';
                 }
 
-                // Output Base
                 errDiv.classList.add('hidden');
                 
                 const indEl = document.getElementById('outInd'); const indStat = document.getElementById('indStatus');
