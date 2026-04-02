@@ -4,170 +4,212 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TI RI-STU-MRD2 PCB Antenna Calculator</title>
-    <!-- Tailwind CSS for robust, modern enterprise styling -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax for rendering formulas -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
         body { 
             font-family: 'Inter', sans-serif; 
-            background-color: #f3f4f6;
+            background-color: #f8fafc;
         }
 
         .input-field {
             width: 100%;
-            padding: 0.625rem 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.375rem;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease-in-out;
+            font-size: 0.875rem;
         }
         
         .input-field:focus {
             outline: none;
             border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
         }
 
         .pass-text { color: #059669; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;}
         .fail-text { color: #dc2626; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;}
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(0,0,0,0.05);
         }
         
-        .animated-bg {
-            background: linear-gradient(-45deg, #1e3a8a, #2563eb, #0f172a);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-        }
-
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* MathJax Custom Styling to ensure it matches the text color */
+        .MathJax { color: #1e293b !important; font-size: 0.9em !important; }
+        
+        #pcb-canvas {
+            display: block;   
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            background-color: #064e3b; /* Dark Green PCB Background */
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+            border: 2px solid #0f172a;
         }
     </style>
 </head>
-<body class="min-h-screen animated-bg p-4 md:p-8 flex items-center justify-center">
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
 
-    <div class="max-w-5xl w-full glass-panel rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
+    <div class="max-w-7xl w-full text-center mb-8">
+        <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight">TI RI-STU-MRD2 PCB Antenna System</h1>
+        <p class="text-slate-500 mt-2">134.2 kHz Planar Spiral Coil Calculator</p>
+    </div>
+
+    <div class="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Input Panel -->
-        <div class="md:w-1/2 p-8 bg-white/50 border-r border-gray-200 relative">
-            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-blue-400"></div>
+        <!-- Column 1: Input Panel -->
+        <div class="glass-panel rounded-xl shadow-lg p-6 flex flex-col border-t-4 border-t-blue-500">
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight mb-5 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                Physical Parameters
+            </h2>
             
-            <div class="flex items-center gap-3 mb-6">
-                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
-                <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Antenna Parameters</h2>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Outer Length (mm)</label>
-                    <input type="number" id="length" value="150" step="1" class="input-field" oninput="calculate()">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Outer Length (mm)</label>
+                        <input type="number" id="length" value="80" step="1" class="input-field" oninput="calculate()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Outer Width (mm)</label>
+                        <input type="number" id="width" value="60" step="1" class="input-field" oninput="calculate()">
+                    </div>
                 </div>
+                
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Outer Width (mm)</label>
-                    <input type="number" id="width" value="120" step="1" class="input-field" oninput="calculate()">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Number of Turns</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Number of Turns</label>
                     <input type="number" id="turns" value="15" step="1" class="input-field" oninput="calculate()">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Trace Width (mm)</label>
-                    <input type="number" id="traceW" value="1.0" step="0.1" class="input-field" oninput="calculate()">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Trace Width (mm)</label>
+                        <input type="number" id="traceW" value="0.5" step="0.1" class="input-field" oninput="calculate()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Trace Spacing (mm)</label>
+                        <input type="number" id="traceS" value="0.3" step="0.1" class="input-field" oninput="calculate()">
+                    </div>
                 </div>
+                
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Trace Spacing (mm)</label>
-                    <input type="number" id="traceS" value="0.5" step="0.1" class="input-field" oninput="calculate()">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Copper Weight</label>
+                    <select id="cuWeight" class="input-field bg-white" onchange="calculate()">
+                        <option value="0.5">0.5 oz (17.5 µm)</option>
+                        <option value="1.0" selected>1.0 oz (35 µm)</option>
+                        <option value="2.0">2.0 oz (70 µm)</option>
+                    </select>
                 </div>
+                
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Corner Routing Type</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Corner Routing Type</label>
                     <select id="cornerType" class="input-field bg-white" onchange="calculate()">
-                        <option value="90">90 Degree (Sharp)</option>
+                        <option value="90" selected>90 Degree (Sharp)</option>
                         <option value="45">45 Degree Chamfer</option>
                         <option value="curve">Curved Arc</option>
                     </select>
                 </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Copper Weight</label>
-                    <div class="relative">
-                        <select id="cuWeight" class="input-field bg-white appearance-none" onchange="calculate()">
-                            <option value="0.5">0.5 oz (17.5 µm) - Thin</option>
-                            <option value="1.0" selected>1.0 oz (35 µm) - Standard</option>
-                            <option value="2.0">2.0 oz (70 µm) - Heavy</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
+            </div>
+
+            <div id="error-msg" class="hidden mt-6 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-xs shadow-sm"></div>
+        </div>
+
+        <!-- Column 2: PCB Visualization & Formulas -->
+        <div class="glass-panel text-slate-800 rounded-xl shadow-lg p-6 flex flex-col lg:col-span-1 border-t-4 border-t-emerald-500 overflow-hidden">
+            <h2 class="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                PCB Antenna Preview
+            </h2>
+            
+            <div class="w-full flex-grow flex items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner mb-6 min-h-[250px]">
+                <canvas id="pcb-canvas" width="400" height="400"></canvas>
+            </div>
+
+            <h3 class="text-sm font-bold text-slate-600 mb-2 border-b pb-1 uppercase tracking-wider">Applied Models</h3>
+            <!-- Math Formulas rendered by MathJax -->
+            <div class="space-y-4 text-xs">
+                <div>
+                    <span class="font-semibold text-slate-700">Modified Wheeler Formula (Inductance):</span>
+                    <div class="mt-1 overflow-x-auto text-center" style="font-size: 1.1em;">
+                        $$L = \frac{\mu_{0} N^{2} d_{avg} c_{1}}{2} \Big[ \ln(\frac{c_{2}}{\rho}) + c_{3}\rho + c_{4}\rho^{2} \Big]$$
                     </div>
                 </div>
-            </div>
-            
-            <div class="mt-6 text-xs text-gray-500 bg-gray-50 border border-gray-100 p-3 rounded-lg">
-                <span class="font-semibold text-gray-700">Target frequency:</span> 134.2 kHz<br>
-                Modified Wheeler Formula (Rectangular) applies natively.
+                <div>
+                    <span class="font-semibold text-slate-700">DC Resistance:</span>
+                    <div class="mt-1 overflow-x-auto text-center" style="font-size: 1.1em;">
+                        $$R = \rho_{cu} \frac{Len}{W_{tr} \times T_{cu}}$$
+                    </div>
+                </div>
+                <div>
+                    <span class="font-semibold text-slate-700">Quality Factor:</span>
+                    <div class="mt-1 overflow-x-auto text-center" style="font-size: 1.1em;">
+                        $$Q = \frac{2 \pi f L}{R}$$
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Output Panel -->
-        <div class="md:w-1/2 p-8 relative bg-white">
-            <h2 class="text-2xl font-bold mb-6 text-gray-900 tracking-tight">Analysis Results</h2>
-            <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 shadow-sm text-sm"></div>
+        <!-- Column 3: Analysis Results -->
+        <div class="glass-panel rounded-xl shadow-lg p-6 flex flex-col border-t-4 border-t-slate-800">
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight mb-5 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Electrical Results
+            </h2>
             
-            <div id="results-container" class="space-y-6 transition-opacity duration-300">
-                <!-- Physical Properties -->
-                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm">
-                    <h3 class="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wider">Physical Properties</h3>
-                    <div class="flex justify-between items-center py-2 border-b border-gray-200">
-                        <span class="text-gray-600 font-medium">Total Trace Length</span>
-                        <span id="outLength" class="font-mono text-lg text-gray-800">0.00 m</span>
+            <div id="results-container" class="space-y-6">
+                <!-- Validation Blocks -->
+                <div class="bg-indigo-50 p-5 rounded-lg border border-indigo-100 mb-6">
+                    <h3 class="text-xs font-bold text-indigo-800 mb-3 uppercase tracking-wider">TI Reader Constraints</h3>
+                    
+                    <div class="bg-white p-3 rounded shadow-sm mb-3">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-sm font-semibold text-slate-700">Inductance (L)</span>
+                            <span id="outInd" class="text-lg font-mono font-bold">0.00 µH</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-500 mb-2">
+                            <span>Target: 46.0 - 47.9 µH</span>
+                        </div>
+                        <div id="indStatus" class="pt-2 border-t border-slate-100 text-xs"></div>
                     </div>
-                    <div class="flex justify-between items-center py-2">
-                        <span class="text-gray-600 font-medium">DC Resistance (@134.2kHz)</span>
-                        <span id="outRes" class="font-mono text-lg text-gray-800">0.00 Ω</span>
+                    
+                    <div class="bg-white p-3 rounded shadow-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-sm font-semibold text-slate-700">Quality Factor (Q)</span>
+                            <span id="outQ" class="text-lg font-mono font-bold">0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-500 mb-2">
+                            <span>Target: 10 - 20</span>
+                        </div>
+                        <div id="qStatus" class="pt-2 border-t border-slate-100 text-xs"></div>
                     </div>
                 </div>
 
-                <!-- Hardware Constraints -->
-                <div class="bg-blue-50/50 p-5 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden">
-                    <div class="absolute right-0 top-0 w-24 h-24 bg-blue-100 rounded-bl-full -z-10 opacity-50"></div>
-                    
-                    <h3 class="font-bold text-blue-900 mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                        TI RI-STU-MRD2 Requirements
-                    </h3>
-                    
-                    <!-- Inductance Output -->
-                    <div class="mb-5 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="block text-sm font-semibold text-gray-800">Inductance (L)</span>
-                                <span class="block text-xs text-gray-500 mt-1">Strict Limit: 46.0 - 47.9 µH</span>
-                            </div>
-                            <div class="text-right">
-                                <span id="outInd" class="text-2xl font-mono font-bold tracking-tight">0.00 µH</span>
-                            </div>
-                        </div>
-                        <div id="indStatus" class="mt-2 pt-2 border-t border-gray-50 text-sm"></div>
+                <!-- Auxiliary Data -->
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Physical Specifications</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <span class="block text-xs text-slate-500 mb-1">Total Length</span>
+                        <span id="outLength" class="block font-mono text-sm font-semibold text-slate-800">0.00 m</span>
                     </div>
-
-                    <!-- Q-Factor Output -->
-                    <div class="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="block text-sm font-semibold text-gray-800">Quality Factor (Q)</span>
-                                <span class="block text-xs text-gray-500 mt-1">Strict Limit: 10 - 20</span>
-                            </div>
-                            <div class="text-right">
-                                <span id="outQ" class="text-2xl font-mono font-bold tracking-tight">0.00</span>
-                            </div>
-                        </div>
-                        <div id="qStatus" class="mt-2 pt-2 border-t border-gray-50 text-sm"></div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <span class="block text-xs text-slate-500 mb-1">Resistance</span>
+                        <span id="outRes" class="block font-mono text-sm font-semibold text-slate-800">0.00 Ω</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <span class="block text-xs text-slate-500 mb-1">Outer Diagonal</span>
+                        <span id="outDiag" class="block font-mono text-sm font-semibold text-slate-800">0.00 mm</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <span class="block text-xs text-slate-500 mb-1">Fill Ratio (ρ)</span>
+                        <span id="outFill" class="block font-mono text-sm font-semibold text-slate-800">0.00</span>
                     </div>
                 </div>
             </div>
@@ -181,6 +223,92 @@
                 : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
         }
 
+        // Draw Spiral on Canvas
+        function drawPCB(L_out, W_out, N, w, s, corner) {
+            const canvas = document.getElementById('pcb-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculate a scale factor to fit the antenna in the 400x400 canvas with padding
+            const padding = 40; 
+            const maxDim = Math.max(L_out, W_out);
+            if (maxDim <= 0) return;
+            
+            const scale = (400 - padding * 2) / maxDim;
+            
+            // Center offsetting
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            const baseColor = "#d97706"; // Copper color
+
+            ctx.lineWidth = w * scale;
+            ctx.strokeStyle = baseColor;
+            ctx.lineCap = corner === "curve" ? "round" : "square";
+            if(corner === "curve") {
+                ctx.lineJoin = "round";
+            } else if (corner === "45") {
+                ctx.lineJoin = "bevel";
+            } else {
+                ctx.lineJoin = "miter";
+            }
+
+            ctx.beginPath();
+            
+            // We draw from outside in
+            let currentWidth = L_out * scale;
+            let currentHeight = W_out * scale;
+            
+            let x = cx - (currentWidth / 2);
+            let y = cy - (currentHeight / 2);
+            
+            ctx.moveTo(x, y);
+
+            for (let i = 0; i < N * 4; i++) {
+                // Determine direction based on segment
+                const segment = i % 4;
+                const turn = Math.floor(i / 4);
+                
+                // Track spacing decrease
+                const decrease = (w + s) * scale;
+
+                if (segment === 0) { // Top edge -> Right
+                    x += currentWidth - (turn > 0 ? decrease : 0);
+                    ctx.lineTo(x, y);
+                } else if (segment === 1) { // Right edge -> Bottom
+                    y += currentHeight - (turn > 0 ? decrease : 0) - (turn===0 ? 0 : 0);
+                    ctx.lineTo(x, y);
+                } else if (segment === 2) { // Bottom edge -> Left
+                    x -= currentWidth - decrease;
+                    ctx.lineTo(x, y);
+                } else if (segment === 3) { // Left edge -> Up
+                    y -= currentHeight - decrease;
+                    ctx.lineTo(x, y);
+                    
+                    // After a full loop, decrease sizes for the next inner loop
+                    currentWidth -= decrease * 2;
+                    currentHeight -= decrease * 2;
+                    
+                    // Small offset to spiral inward
+                    if (i < (N*4 - 1)) {
+                        x += decrease;
+                        ctx.lineTo(x, y);
+                    }
+                }
+            }
+            ctx.stroke();
+            
+            // Add some "vias" at the ends
+            ctx.fillStyle = "#fbbf24";
+            ctx.beginPath();
+            ctx.arc(cx - (L_out*scale)/2, cy - (W_out*scale)/2, (w*scale), 0, 2*Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(x, y, (w*scale), 0, 2*Math.PI);
+            ctx.fill();
+        }
+
         function calculate() {
             // Constants
             const freq = 134200; // Hz
@@ -190,7 +318,7 @@
             // Inputs
             const L_out = parseFloat(document.getElementById('length').value);
             const W_out = parseFloat(document.getElementById('width').value);
-            const N = parseInt(document.getElementById('turns').value);
+            const N = parseFloat(document.getElementById('turns').value);
             const w = parseFloat(document.getElementById('traceW').value);
             const s = parseFloat(document.getElementById('traceS').value);
             const cu_oz = parseFloat(document.getElementById('cuWeight').value);
@@ -211,7 +339,7 @@
                 const W_in = W_out - 2*N*(w+s);
 
                 if (L_in <= 0 || W_in <= 0) {
-                    throw new Error("Geometry Error: Too many turns or too thick traces for this board size. Traces would overlap in the center.");
+                    throw new Error("Geometry Error: Traces overlap in the center. Reduce turns or trace width/spacing.");
                 }
 
                 // Average Dimensions & Perimeter
@@ -248,12 +376,14 @@
                 const XL = 2 * Math.PI * freq * L_est;
                 const Q = XL / R;
 
-                // Update UI
+                // Output Data
                 errDiv.classList.add('hidden');
-                resDiv.classList.remove('opacity-20');
+                resDiv.style.opacity = '1';
 
                 document.getElementById('outLength').innerText = total_len_m.toFixed(2) + " m";
                 document.getElementById('outRes').innerText = R.toFixed(2) + " Ω";
+                document.getElementById('outDiag').innerText = Math.sqrt(L_out*L_out + W_out*W_out).toFixed(2) + " mm";
+                document.getElementById('outFill').innerText = fill_ratio.toFixed(3);
                 
                 // Inductance Validation
                 const indEl = document.getElementById('outInd');
@@ -262,10 +392,10 @@
                 
                 if (L_uH >= 46.0 && L_uH <= 47.9) {
                     indStat.innerHTML = `<span class="pass-text">${getIcon(true)} PASS - Operational Target Met</span>`;
-                    indEl.className = "text-2xl font-mono font-bold tracking-tight text-emerald-600";
+                    indEl.className = "text-xl font-mono font-bold text-emerald-600";
                 } else {
                     indStat.innerHTML = `<span class="fail-text">${getIcon(false)} FAIL - Out of Compliance</span>`;
-                    indEl.className = "text-2xl font-mono font-bold tracking-tight text-red-600";
+                    indEl.className = "text-xl font-mono font-bold text-red-600";
                 }
 
                 // Q Validation
@@ -275,21 +405,30 @@
                 
                 if (Q >= 10.0 && Q <= 20.0) {
                     qStat.innerHTML = `<span class="pass-text">${getIcon(true)} PASS - Optimal Tuning</span>`;
-                    qEl.className = "text-2xl font-mono font-bold tracking-tight text-emerald-600";
+                    qEl.className = "text-xl font-mono font-bold text-emerald-600";
                 } else {
                     qStat.innerHTML = `<span class="fail-text">${getIcon(false)} FAIL - Out of Compliance</span>`;
-                    qEl.className = "text-2xl font-mono font-bold tracking-tight text-red-600";
+                    qEl.className = "text-xl font-mono font-bold text-red-600";
                 }
 
+                // Call Draw Function
+                drawPCB(L_out, W_out, N, w, s, corner);
+
             } catch (e) {
-                errDiv.innerHTML = `<span class="font-semibold block mb-1">Calculation Error:</span> ${e.message}`;
+                errDiv.innerHTML = `<span class="font-bold">Error:</span> ${e.message}`;
                 errDiv.classList.remove('hidden');
-                resDiv.classList.add('opacity-20');
+                resDiv.style.opacity = '0.3';
+                const canvas = document.getElementById('pcb-canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear map on error
             }
         }
 
         // Initialize on load
-        window.onload = calculate;
+        window.onload = function() {
+            calculate();
+        };
+
     </script>
 </body>
 </html>
