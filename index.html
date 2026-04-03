@@ -287,16 +287,16 @@
                     </h3>
                     <div class="space-y-4 text-sm">
                         <div>
-                            <label class="block font-semibold text-slate-400 mb-1">Charge Phase</label>
+                            <label class="block font-semibold text-slate-400 mb-1">Charge Phase (TI MRD2)</label>
                             <input type="number" id="chargeTime" value="50" class="input-box-dark font-mono" step="1" oninput="calculateSpeed()">
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-400 mb-1">Listen Phase</label>
+                            <label class="block font-semibold text-slate-400 mb-1">Listen Phase (HDX Spec)</label>
                             <input type="number" id="listenTime" value="20" class="input-box-dark font-mono" step="1" oninput="calculateSpeed()">
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-400 mb-1">Reader Overhead</label>
-                            <input type="number" id="overheadTime" value="30" class="input-box-dark font-mono" step="1" oninput="calculateSpeed()">
+                            <label class="block font-semibold text-slate-400 mb-1">Reader Overhead (MRD2 Avg)</label>
+                            <input type="number" id="overheadTime" value="10" class="input-box-dark font-mono" step="1" oninput="calculateSpeed()">
                         </div>
                     </div>
                 </div>
@@ -334,7 +334,51 @@
                         <p class="text-[10px] text-emerald-200/70 mt-3 z-10">Target: Exposes the 25cm Pod for exactly <strong>3 cycles</strong> inside the <span id="syncLenOpt">--</span> mm dynamic effective read zone.</p>
                     </div>
                 </div>
-            </div>
+
+                <!-- Live Animation -->
+                <div class="industrial-panel rounded-xl flex flex-col relative overflow-hidden h-40 border border-slate-600 mt-2 bg-slate-950">
+                    <style>
+                        @keyframes slide-belt {
+                            0% { transform: translateX(0%); }
+                            100% { transform: translateX(-192px); } /* 120px pod + 72px gap = 192px visual pitch */
+                        }
+                        .animate-belt { animation: slide-belt var(--anim-speed, 2s) linear infinite; }
+                    </style>
+                    <div class="absolute top-0 w-full bg-slate-800/80 backdrop-blur text-[10px] text-center py-1 font-bold text-slate-300 border-b border-slate-700 z-20 shadow-md">
+                        RI-STU-MRD2 Simulation: 25cm Pods (30cm Gap) | Tag: TRPGR30ATGB (Mounted Underneath)
+                    </div>
+                    
+                    <div class="w-full h-full relative flex items-end justify-center overflow-hidden pb-4">
+                        <!-- EMF Field Bloom -->
+                        <div id="simFieldBloom" class="absolute bottom-4 w-40 h-28 bg-emerald-500/20 rounded-[50%] blur-xl transition-all duration-300 z-0"></div>
+
+                        <!-- Antenna Model -->
+                        <div class="absolute bottom-4 w-32 h-4 border-2 border-emerald-400 bg-emerald-900/60 rounded flex items-center justify-center z-10 shadow-[0_0_10px_rgba(52,211,153,0.4)]">
+                            <span class="text-[8px] font-bold text-emerald-300 tracking-widest whitespace-nowrap overflow-hidden">PCB ANTENNA</span>
+                        </div>
+                        
+                        <!-- Conveyor Belt Layer -->
+                        <div class="absolute bottom-8 w-full h-1 bg-slate-600 z-20 border-t border-slate-500 shadow-md"></div>
+                        
+                        <!-- Sliding Pods Container -->
+                        <div class="absolute bottom-9 left-0 w-[200%] h-16 flex animate-belt flex-nowrap z-20" id="conveyorTrack">
+                            <script>
+                                let podsHTML = '';
+                                for(let i=0; i<10; i++) {
+                                    podsHTML += `
+                                    <div class="w-[120px] h-14 bg-indigo-900/90 border-t-2 border-l border-r border-indigo-500 rounded-t-sm flex flex-col items-center justify-start pt-2 relative mx-[36px] flex-shrink-0 shadow-lg">
+                                        <span class="text-[9px] font-bold text-indigo-200 uppercase tracking-widest">Pod System</span>
+                                        <span class="text-[7px] text-indigo-400">25CM</span>
+                                        <div class="absolute -bottom-1 w-12 h-2 bg-amber-400 rounded-sm flex items-center justify-center shadow-[0_0_8px_rgba(251,191,36,0.6)] border border-amber-600">
+                                            <span class="text-[5px] font-bold text-amber-900 leading-none">TRPGR30ATGB</span>
+                                        </div>
+                                    </div>`;
+                                }
+                                document.write(podsHTML);
+                            </script>
+                        </div>
+                    </div>
+                </div>
         </div>
     </div>
 
@@ -934,6 +978,25 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
 
             document.getElementById('maxSpeedOut').innerText = max_speed.toFixed(3);
             document.getElementById('optSpeedOut').innerText = opt_speed.toFixed(3);
+
+            // --- ANIMATION UPDATE ---
+            const track = document.getElementById('conveyorTrack');
+            const bloom = document.getElementById('simFieldBloom');
+            if (track && bloom) {
+                if (opt_speed > 0.05) {
+                    // Physical pitch is 55cm (0.55m). Time per pitch = distance / speed.
+                    const animDuration = Math.max(0.1, 0.55 / opt_speed);
+                    track.style.setProperty('--anim-speed', animDuration + 's');
+                    track.style.animationPlayState = 'running';
+                    // Bloom scales visually roughly with the effective window size
+                    bloom.style.width = (120 + effWindow_mm * 0.4) + 'px';
+                    bloom.style.opacity = '1';
+                } else {
+                    track.style.animationPlayState = 'paused';
+                    bloom.style.width = '20px';
+                    bloom.style.opacity = '0.1';
+                }
+            }
         }
 
         window.onload = function() { setupCanvasInteractions(); loadSavedConfigsList(); calculate(); calculateSpeed(); };
