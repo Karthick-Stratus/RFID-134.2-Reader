@@ -322,7 +322,7 @@
                             <span id="maxSpeedOut" class="text-4xl md:text-5xl font-mono font-extrabold text-white">0.00</span>
                             <span class="text-lg font-bold text-indigo-300">m/s</span>
                         </div>
-                        <p class="text-[10px] text-indigo-200/70 mt-3 z-10">Limit: Exactly <strong>2 complete cycles</strong> over the <span id="syncLenMax">--</span> mm antenna.</p>
+                        <p class="text-[10px] text-indigo-200/70 mt-3 z-10">Limit: Exposes the 25cm Pod for exactly <strong>2 cycles</strong> inside the <span id="syncLenMax">--</span> mm dynamic effective read zone.</p>
                     </div>
                     <!-- Optimal Speed -->
                     <div class="industrial-panel rounded-xl flex flex-col metric-card-opt relative p-6 justify-center">
@@ -331,7 +331,7 @@
                             <span id="optSpeedOut" class="text-4xl md:text-5xl font-mono font-extrabold text-white">0.00</span>
                             <span class="text-lg font-bold text-emerald-300">m/s</span>
                         </div>
-                        <p class="text-[10px] text-emerald-200/70 mt-3 z-10">Target: Exactly <strong>3 complete cycles</strong> over the <span id="syncLenOpt">--</span> mm antenna for noise buffer.</p>
+                        <p class="text-[10px] text-emerald-200/70 mt-3 z-10">Target: Exposes the 25cm Pod for exactly <strong>3 cycles</strong> inside the <span id="syncLenOpt">--</span> mm dynamic effective read zone.</p>
                     </div>
                 </div>
             </div>
@@ -888,29 +888,49 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
         }
 
         function calculateSpeed() {
-            // Read antenna length strictly mapped to PCB Outer X input (converted safely to mm via our helper)
+            // Base geometry mapped to PCB Outer X input
             const antLength_mm = getMmValue('length') || 0;
             const charge_ms = parseFloat(document.getElementById('chargeTime').value) || 0;
             const listen_ms = parseFloat(document.getElementById('listenTime').value) || 0;
             const overhead_ms = parseFloat(document.getElementById('overheadTime').value) || 0;
 
-            const antLength_m = antLength_mm / 1000.0;
+            // --- HIGH ACCURACY ADAPTIVE ENVELOPE MATH ---
+            const podSize_mm = 250; // Fixed pod payload size (25CM)
+            
+            // Extract the live, dynamic Read Distance from the Tuning Simulator output
+            const distText = document.getElementById('readDist').innerText;
+            const readDist_cm = parseFloat(distText.replace(/[^\d.-]/g, '')) || 0;
+            const readDist_mm = readDist_cm * 10;
+
+            // The magnetic read field blooms outward beyond the physical trace edges.
+            // Active Scanning Zone = Antenna Length + (Read Range field bloom factor ~ 1.2x)
+            const activeZone_mm = antLength_mm + (readDist_mm * 1.2);
+
+            // To guarantee the tag on the moving Pod is definitely scanned, 
+            // the effective window must subtract the physical Pod footprint uncertainty.
+            let effWindow_mm = activeZone_mm - podSize_mm;
+
+            // If the math yields a negative window (pod is way too big or read range is dead), 
+            // the speed safely throttles to near zero.
+            if (effWindow_mm <= 0.1) { effWindow_mm = 0.1; }
+
+            const effWindow_m = effWindow_mm / 1000.0;
             const cycle_ms = charge_ms + listen_ms + overhead_ms;
             const cycle_s = cycle_ms / 1000.0;
 
             document.getElementById('totalCycleOut').innerText = cycle_ms.toFixed(1) + " ms";
             document.getElementById('totalCycleSecOut').innerText = cycle_s.toFixed(3) + " s";
-            document.getElementById('syncLenMax').innerText = antLength_mm.toFixed(1);
-            document.getElementById('syncLenOpt').innerText = antLength_mm.toFixed(1);
+            document.getElementById('syncLenMax').innerText = effWindow_mm.toFixed(1);
+            document.getElementById('syncLenOpt').innerText = effWindow_mm.toFixed(1);
 
-            if (cycle_s <= 0 || antLength_m <= 0) {
+            if (cycle_s <= 0) {
                 document.getElementById('maxSpeedOut').innerText = "0.00";
                 document.getElementById('optSpeedOut').innerText = "0.00";
                 return;
             }
 
-            const max_speed = antLength_m / (2 * cycle_s);
-            const opt_speed = antLength_m / (3 * cycle_s);
+            const max_speed = effWindow_m / (2 * cycle_s);
+            const opt_speed = effWindow_m / (3 * cycle_s);
 
             document.getElementById('maxSpeedOut').innerText = max_speed.toFixed(3);
             document.getElementById('optSpeedOut').innerText = opt_speed.toFixed(3);
