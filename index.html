@@ -140,8 +140,14 @@
                 </h2>
                 <div id="antennaGrade" class="flex-shrink-0"></div>
             </div>
-            <div class="w-full flex-grow flex flex-col items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner min-h-[220px]">
-                <canvas id="pcb-canvas" width="400" height="400" class="w-full h-auto object-contain"></canvas>
+            <div class="w-full flex-grow flex flex-col items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner min-h-[220px] relative overflow-hidden group">
+                <canvas id="pcb-canvas" width="400" height="400" class="w-full h-auto object-contain cursor-move"></canvas>
+                <!-- Zoom Controls Overlay -->
+                <div class="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="zoomCanvas(1.1)" class="p-1 px-2 bg-white/80 rounded border border-slate-300 text-slate-800 text-xs font-bold hover:bg-white">+</button>
+                    <button onclick="zoomCanvas(0.9)" class="p-1 px-2 bg-white/80 rounded border border-slate-300 text-slate-800 text-xs font-bold hover:bg-white">-</button>
+                    <button onclick="resetZoom()" class="p-1 px-2 bg-white/80 rounded border border-slate-300 text-slate-800 text-[10px] font-bold hover:bg-white">Fit</button>
+                </div>
             </div>
             <div class="bg-white p-3 border border-slate-200 mt-4 rounded-lg shadow-sm w-full mx-auto">
                 <h3 class="text-[10px] font-bold text-slate-600 uppercase mb-2 border-b pb-1">Nominal Output Estimates</h3>
@@ -156,7 +162,10 @@
                     </div>
                     <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
                         <span class="text-slate-500">Trace Length:</span>
-                        <span id="traceLenOut" class="font-bold text-slate-700 font-mono">- m</span>
+                        <div class="flex flex-col items-end">
+                            <span id="traceLenOut" class="font-bold text-slate-700 font-mono">- m</span>
+                            <span id="traceLenMilsOut" class="text-[9px] text-slate-400 font-mono">- mils</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -502,6 +511,38 @@
             calculate();
         }
 
+        let zoomLevel = 1.0;
+        let offset = { x: 0, y: 0 };
+        let isDragging = false;
+        let lastMousePos = { x: 0, y: 0 };
+
+        function zoomCanvas(factor) { zoomLevel *= factor; calculate(); }
+        function resetZoom() { zoomLevel = 1.0; offset = { x: 0, y: 0 }; calculate(); }
+
+        function setupCanvasInteractions() {
+            const canvas = document.getElementById('pcb-canvas');
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY > 0 ? 0.9 : 1.1;
+                zoomCanvas(factor);
+            }, { passive: false });
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                offset.x += (e.clientX - lastMousePos.x) / zoomLevel;
+                offset.y += (e.clientY - lastMousePos.y) / zoomLevel;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                calculate();
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+        }
+
         function drawPCB(L_out, W_out, N, w, s, corner, mat) {
             const canvas = document.getElementById('pcb-canvas');
             const ctx = canvas.getContext('2d');
@@ -512,8 +553,12 @@
 
             const maxDim = Math.max(L_out, W_out);
             if (maxDim <= 0) return;
+            
+            ctx.save();
+            ctx.translate(canvas.width/2 + offset.x, canvas.height/2 + offset.y);
+            ctx.scale(zoomLevel, zoomLevel);
+
             const padding = 20; const scale = (canvas.width - padding * 2) / maxDim;
-            const cx = canvas.width / 2; const cy = canvas.height / 2;
 
             ctx.lineWidth = w * scale; ctx.strokeStyle = "#fbbf24"; 
             ctx.lineCap = corner === "curve" ? "round" : "square";
@@ -522,8 +567,8 @@
             else { ctx.lineJoin = "miter"; }
 
             ctx.beginPath();
-            let left = cx - (L_out * scale) / 2; let right = cx + (L_out * scale) / 2;
-            let top = cy - (W_out * scale) / 2; let bottom = cy + (W_out * scale) / 2;
+            let left = -(L_out * scale) / 2; let right = (L_out * scale) / 2;
+            let top = -(W_out * scale) / 2; let bottom = (W_out * scale) / 2;
             let delta = (w + s) * scale;
             ctx.moveTo(left, top);
 
@@ -534,6 +579,7 @@
                 if(left >= right || top >= bottom) break;
             }
             ctx.stroke();
+            ctx.restore();
         }
 
         // Global base object for the report dump
@@ -814,12 +860,17 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
                 }
                 
                 document.getElementById('antennaGrade').innerHTML = `<span class="metric-badge ${gradeClass}">${gradeText}</span>`;
+                
+                // Always show physical trace length
+                document.getElementById('traceLenOut').innerText = `${base.Length_m.toFixed(2)} m`;
+                document.getElementById('traceLenMilsOut').innerText = `${(base.Length_m * 39370.0787).toLocaleString(undefined, {maximumFractionDigits: 0})} mils`;
+
                 if(gradeClass === "badge-poor") {
-                    document.getElementById('readDist').innerText = "---"; document.getElementById('powerRad').innerText = "---";
+                    document.getElementById('readDist').innerText = "---"; 
+                    document.getElementById('powerRad').innerText = "---";
                 } else {
                     document.getElementById('readDist').innerText = `~ ${base.Dist.toFixed(1)} cm`;
                     document.getElementById('powerRad').innerText = `~ ${base.Power.toFixed(0)} mW`;
-                    document.getElementById('traceLenOut').innerText = `${base.Length_m.toFixed(2)} m`;
                 }
 
                 drawPCB(L_out, W_out, N, w, s, corner, mat);
@@ -865,7 +916,7 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
             document.getElementById('optSpeedOut').innerText = opt_speed.toFixed(3);
         }
 
-        window.onload = function() { loadSavedConfigsList(); calculate(); calculateSpeed(); };
+        window.onload = function() { setupCanvasInteractions(); loadSavedConfigsList(); calculate(); calculateSpeed(); };
 
     </script>
 </body>
