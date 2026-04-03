@@ -150,9 +150,9 @@
                         <span class="text-slate-500">Read Range:</span>
                         <span id="readDist" class="font-bold text-emerald-600 font-mono">- cm</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Radiated Pow:</span>
-                        <span id="powerRad" class="font-bold text-blue-600 font-mono">- mW</span>
+                    <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
+                        <span class="text-slate-500">Trace Length:</span>
+                        <span id="traceLenOut" class="font-bold text-slate-700 font-mono">- m</span>
                     </div>
                 </div>
             </div>
@@ -719,7 +719,7 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
             
             let radPower = (R * Math.pow(0.2, 2)) * 1000;
 
-            return {L_uH: finalL, Q: Q, R: R, Dist: distEst, Power: radPower};
+            return {L_uH: finalL, Q: Q, R: R, Dist: distEst, Power: radPower, Length_m: total_len_m};
         }
 
         function calculate() {
@@ -815,6 +815,7 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
                 } else {
                     document.getElementById('readDist').innerText = `~ ${base.Dist.toFixed(1)} cm`;
                     document.getElementById('powerRad').innerText = `~ ${base.Power.toFixed(0)} mW`;
+                    document.getElementById('traceLenOut').innerText = `${base.Length_m.toFixed(2)} m`;
                 }
 
                 drawPCB(L_out, W_out, N, w, s, corner, mat);
