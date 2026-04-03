@@ -1,529 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TI RI-STU-MRD2 PCB Antenna Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; overflow-x: hidden; }
-        .input-field { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.875rem; transition: border-color 0.2s;}
-        .input-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
-        .pass-text { color: #059669; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;}
-        .fail-text { color: #dc2626; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;}
-        .glass-panel { background: rgba(255, 255, 255, 0.98); border: 1px solid rgba(0,0,0,0.05); }
-        .MathJax { color: #1e293b !important; font-size: 0.95em !important; }
-        #pcb-canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; border-radius: 0.5rem; background-color: #064e3b; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); border: 2px solid #0f172a;}
-        .metric-badge { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .badge-excellent { background-color: #dcfce7; color: #166534; border: 1px solid #4ade80;}
-        .badge-best { background-color: #dbeafe; color: #1e40af; border: 1px solid #60a5fa;}
-        .badge-good { background-color: #fef9c3; color: #854d0e; border: 1px solid #facc15;}
-        .badge-average { background-color: #ffedd5; color: #9a3412; border: 1px solid #fb923c;}
-        .badge-poor { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171;}
-        
-        .industrial-panel { background: #1e293b; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); color: #f8fafc;}
-        .input-box-dark { background: #0f172a; border: 1px solid #475569; color: #f8fafc; transition: all 0.2s; padding: 0.5rem; border-radius: 0.375rem; width: 100%;}
-        .input-box-dark:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
-        .metric-card-max { background: linear-gradient(145deg, #1e1b4b, #312e81); border-left: 4px solid #6366f1; }
-        .metric-card-opt { background: linear-gradient(145deg, #064e3b, #0f766e); border-left: 4px solid #10b981; }
+        .pass {
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        .fail {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-6 flex flex-col items-center w-full">
 
-    <div class="w-full flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div class="text-center md:text-left">
-            <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight">TI RI-STU-MRD2 PCB Antenna System</h1>
-            <p class="text-slate-500 mt-2">134.2 kHz Planar Spiral Coil Calculator</p>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-3">
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-center gap-3">
-                <span class="text-xs font-bold text-slate-500 uppercase">Input Unit:</span>
-                <select id="unit-selector" class="input-field py-1 px-2 w-auto bg-slate-50 font-bold" onchange="toggleUnit()">
-                    <option value="mm" selected>Millimeters (mm)</option>
-                    <option value="mils">Mils</option>
-                </select>
-            </div>
-            <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-center gap-2">
-                <select id="saved-configs" class="input-field py-1 px-2 w-32 bg-slate-50 text-xs" onchange="loadConfig()">
-                    <option value="">Load Preset...</option>
-                </select>
-                <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-3 rounded shadow transition-colors flex-shrink-0">
-                    Save Current
-                </button>
-            </div>
-        </div>
-    </div>
+<body class="bg-gray-50 text-gray-800 font-sans p-6">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
 
-    <!-- MAIN DASHBOARD -->
-    <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        
-        <!-- Physical Parameters -->
-        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-blue-500 w-full h-full">
-            <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                Physical Params
-            </h2>
+        <div class="md:w-1/2 p-8 bg-gray-100 border-r border-gray-200">
+            <h2 class="text-2xl font-bold mb-6 text-blue-900">Antenna Parameters</h2>
+
             <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Outer X (<span class="unit-label">mm</span>)</label>
-                        <input type="number" id="length" value="100" step="any" class="input-field" oninput="calculate()">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Outer Y (<span class="unit-label">mm</span>)</label>
-                        <input type="number" id="width" value="70" step="any" class="input-field" oninput="calculate()">
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Outer Length (mm)</label>
+                    <input type="number" id="length" value="150" step="1" oninput="calculate()">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">Number of Turns</label>
-                    <input type="number" id="turns" value="16" step="1" class="input-field" oninput="calculate()">
+                    <label class="block text-sm font-medium text-gray-700">Outer Width (mm)</label>
+                    <input type="number" id="width" value="120" step="1" oninput="calculate()">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Trace W (<span class="unit-label">mm</span>)</label>
-                        <input type="number" id="traceW" value="0.75" step="any" class="input-field" oninput="calculate()">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Trace S (<span class="unit-label">mm</span>)</label>
-                        <input type="number" id="traceS" value="0.3" step="any" class="input-field" oninput="calculate()">
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Number of Turns</label>
+                    <input type="number" id="turns" value="15" step="1" oninput="calculate()">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Copper Oz</label>
-                        <select id="cuWeight" class="input-field bg-white" onchange="calculate()">
-                            <option value="0.5">0.5 oz</option>
-                            <option value="1.0" selected>1.0 oz</option>
-                            <option value="2.0">2.0 oz</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Corner</label>
-                        <select id="cornerType" class="input-field bg-white" onchange="calculate()">
-                            <option value="90" selected>90 Deg</option>
-                            <option value="45">45 Deg</option>
-                            <option value="curve">Arc</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Trace Width (mm)</label>
+                    <input type="number" id="traceW" value="1.0" step="0.1" oninput="calculate()">
                 </div>
-                <div class="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Material</label>
-                        <select id="pcbMat" class="input-field bg-white" onchange="calculate()">
-                            <option value="FR4" selected>FR-4</option>
-                            <option value="Rogers">Rogers</option>
-                            <option value="Flex">Polyimide</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Thickness</label>
-                        <select id="pcbThick" class="input-field bg-white" onchange="calculate()">
-                            <option value="1.6" selected>1.6 mm</option>
-                            <option value="0.8">0.8 mm</option>
-                            <option value="0.4">0.4 mm</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Trace Spacing (mm)</label>
+                    <input type="number" id="traceS" value="0.5" step="0.1" oninput="calculate()">
                 </div>
-            </div>
-            <div id="error-msg" class="hidden mt-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-xs shadow-sm w-full break-words"></div>
-        </div>
-
-        <!-- Simulation Visualization -->
-        <div class="glass-panel text-slate-800 rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-emerald-500 w-full h-full">
-            <div class="flex flex-row items-center justify-between pb-3 mb-2 border-b border-gray-100">
-                <h2 class="text-lg font-bold tracking-tight flex items-center gap-2 whitespace-nowrap">
-                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                    Tuning Sim
-                </h2>
-                <div id="antennaGrade" class="flex-shrink-0"></div>
-            </div>
-            <div class="w-full flex-grow flex flex-col items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner min-h-[220px]">
-                <canvas id="pcb-canvas" width="400" height="400" class="w-full h-auto object-contain"></canvas>
-            </div>
-            <div class="bg-white p-3 border border-slate-200 mt-4 rounded-lg shadow-sm w-full mx-auto">
-                <h3 class="text-[10px] font-bold text-slate-600 uppercase mb-2 border-b pb-1">Nominal Output Estimates</h3>
-                <div class="space-y-1 text-[11px] font-semibold text-slate-600">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Read Range:</span>
-                        <span id="readDist" class="font-bold text-emerald-600 font-mono">- cm</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Radiated Pow:</span>
-                        <span id="powerRad" class="font-bold text-blue-600 font-mono">- mW</span>
-                    </div>
-                    <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
-                        <span class="text-slate-500">Trace Length:</span>
-                        <span id="traceLenOut" class="font-bold text-slate-700 font-mono">- m</span>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Copper Weight</label>
+                    <select id="cuWeight" onchange="calculate()">
+                        <option value="0.5">0.5 oz (17.5 µm)</option>
+                        <option value="1.0" selected>1.0 oz (35 µm)</option>
+                        <option value="2.0">2.0 oz (70 µm)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Corner Routing Type</label>
+                    <select id="cornerType" onchange="calculate()">
+                        <option value="90">90 Degree (Sharp)</option>
+                        <option value="45">45 Degree Chamfer</option>
+                        <option value="curve">Curved Arc</option>
+                    </select>
                 </div>
             </div>
         </div>
 
-        <!-- Electrical Results Output -->
-        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-slate-800 w-full h-full relative">
-            <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-4 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    Base Parameters
-                </div>
-                <button onclick="openDetailedReport()" class="flex border border-slate-300 text-slate-600 text-[10px] px-2 py-1 rounded hover:bg-slate-100 hover:text-slate-800 transition items-center gap-1 font-bold shadow-sm bg-white">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Detailed Calculation
-                </button>
-            </h2>
-            <div class="space-y-4 flex-grow flex flex-col justify-start">
-                
-                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xl relative overflow-hidden group hover:border-indigo-300 transition-colors">
-                    <div class="absolute right-0 top-0 w-8 h-full bg-indigo-50 -z-10 transition-transform group-hover:scale-110"></div>
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-sm font-bold text-slate-800">Inductance (L)</span>
-                        <span id="outInd" class="text-lg font-mono font-bold">0.00 µH</span>
-                    </div>
-                    <div class="text-[11px] text-slate-600 mb-2 border-b border-indigo-50 pb-2">
-                        <strong>MRD2 Target: 46.0 - 47.9 µH</strong> (Strict 47.0 µH Typ)<br>
-                        <em>Warning:</em> Failing this limit triggers severe mismatch, directly risking permanent damage to the reader module due to current reflection.
-                    </div>
-                    <div id="indStatus" class="mt-1 text-xs"></div>
-                </div>
-                
-                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xl relative overflow-hidden group hover:border-amber-300 transition-colors">
-                    <div class="absolute right-0 top-0 w-8 h-full bg-amber-50 -z-10 transition-transform group-hover:scale-110"></div>
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-sm font-bold text-slate-800">Quality Factor (Q)</span>
-                        <span id="outQ" class="text-lg font-mono font-bold">0.00</span>
-                    </div>
-                    <div class="text-[11px] text-slate-600 mb-2 border-b border-amber-50 pb-2">
-                        <strong>MRD2 Target: 10.0 - 20.0</strong><br>
-                        <em>Note:</em> Above 20, resonant bandwidth clips FDX subcarrier. Below 10, resonance is critically damped ruining read distance.
-                    </div>
-                    <div id="qStatus" class="mt-1 text-xs"></div>
-                </div>
-                
-                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xl relative overflow-hidden group hover:border-teal-300 transition-colors">
-                    <div class="absolute right-0 top-0 w-8 h-full bg-teal-50 -z-10 transition-transform group-hover:scale-110"></div>
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-sm font-bold text-slate-800">Trace Resistance</span>
-                        <span id="outRes" class="text-lg font-mono font-bold">0.00 Ω</span>
-                    </div>
-                    <div class="text-[11px] text-slate-600 mb-2 border-b border-teal-50 pb-2">
-                        <strong>Derived Target: ~1.5 - 4.5 Ω</strong><br>
-                        <em>Note:</em> High series resistance completely throttles TI driver transmit power. Requires wider traces or heavier copper thickness (2.0 oz).
-                    </div>
-                    <div id="resStatus" class="mt-1 text-xs"></div>
-                </div>
+        <div class="md:w-1/2 p-8 relative">
+            <h2 class="text-2xl font-bold mb-6 text-blue-900">Analysis Results</h2>
+            <div id="error-msg" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4"></div>
 
-            </div>
-        </div>
-
-        <!-- Fab Tolerance Simulator -->
-        <div class="glass-panel rounded-xl shadow-lg p-5 flex flex-col border-t-4 border-t-purple-500 w-full h-full lg:col-span-1">
-            <h2 class="text-lg font-bold text-slate-800 tracking-tight mb-3 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                    Fab Tolerance
-                </div>
-            </h2>
-            <div class="bg-purple-50 p-3 rounded-lg border border-purple-100 mb-3 text-xs flex-shrink-0">
-                <div class="flex items-center justify-between mb-3 border-b border-purple-200 pb-2">
-                    <span class="font-bold text-purple-800">Activate Check</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="tolActive" class="sr-only peer" onchange="calculate()">
-                        <div class="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-purple-600"></div>
-                    </label>
-                </div>
-                <div class="flex justify-between items-center gap-2">
-                    <label class="block font-semibold text-slate-700 whitespace-nowrap">Etch Var (±%)</label>
-                    <input type="number" id="tolVal" value="10" step="1" min="1" max="50" class="input-field bg-white py-1 w-20 text-right" oninput="calculate()">
-                </div>
-            </div>
-
-            <div id="tolOutputs" class="hidden flex-col gap-2 overflow-y-auto w-full pr-1 flex-grow scrollbar-thin scrollbar-thumb-gray-300 min-h-[150px]">
-                <div class="bg-white border border-slate-200 p-2 rounded shadow-sm text-[11px] w-full">
-                    <div class="font-bold text-slate-700 mb-1 tracking-wider uppercase border-b border-slate-100 pb-1">Under-Etch (Wider)</div>
-                    <div class="flex justify-between my-0.5"><span>Ind:</span> <span id="tol_UE_L" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between my-0.5"><span>Q:</span> <span id="tol_UE_Q" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between my-0.5"><span>Res:</span> <span id="tol_UE_R" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between border-t border-dashed mt-1 pt-1 opacity-90"><span>Dst:</span> <span id="tol_UE_Dist" class="font-mono text-emerald-700 font-bold"></span></div>
-                    <div class="flex justify-between opacity-90"><span>Pow:</span> <span id="tol_UE_Pow" class="font-mono text-blue-700 font-bold"></span></div>
-                </div>
-                <div class="bg-white border border-slate-200 p-2 rounded shadow-sm text-[11px] w-full">
-                    <div class="font-bold text-slate-700 mb-1 tracking-wider uppercase border-b border-slate-100 pb-1">Over-Etch (Thinner)</div>
-                    <div class="flex justify-between my-0.5"><span>Ind:</span> <span id="tol_OE_L" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between my-0.5"><span>Q:</span> <span id="tol_OE_Q" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between my-0.5"><span>Res:</span> <span id="tol_OE_R" class="font-mono font-bold"></span></div>
-                    <div class="flex justify-between border-t border-dashed mt-1 pt-1 opacity-90"><span>Dst:</span> <span id="tol_OE_Dist" class="font-mono text-emerald-700 font-bold"></span></div>
-                    <div class="flex justify-between opacity-90"><span>Pow:</span> <span id="tol_OE_Pow" class="font-mono text-blue-700 font-bold"></span></div>
-                </div>
-            </div>
-        </div>
-    </div> <!-- END MAIN DASHBOARD -->
-
-    <!-- CONVEYOR POD SPEED MODULE -->
-    <div class="w-full glass-panel rounded-xl shadow-lg p-6 lg:p-10 mb-10 border-t-4 border-t-sky-500 bg-slate-900">
-        <h2 class="text-2xl font-bold flex items-center gap-2 border-b pb-3 border-slate-700 text-white mb-6">
-            <svg class="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            Conveyor Pod Speed Calculator
-            <span class="text-sm font-normal text-slate-400 ml-2 mt-1">Live Sync with PCB Geometry</span>
-        </h2>
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 text-slate-200">
-            <!-- INPUTS -->
-            <div class="lg:col-span-4 flex flex-col gap-6">
-                <div class="industrial-panel rounded-xl p-5 relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
-                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-100">
-                        HDX Timing Sequence (ms)
-                    </h3>
-                    <div class="space-y-4 text-sm">
-                        <div>
-                            <label class="block font-semibold text-slate-400 mb-1">Charge Phase</label>
-                            <input type="number" id="chargeTime" value="50" class="input-box-dark font-mono" step="1" oninput="calculateSpeed()">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-slate-400 mb-1">Listen Phase</label>
-                            <input type="number" id="listenTime" value="20" class="input-box-dark font-mono" step="1" oninput="calculateSpeed()">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-slate-400 mb-1">Reader Overhead</label>
-                            <input type="number" id="overheadTime" value="30" class="input-box-dark font-mono" step="1" oninput="calculateSpeed()">
+            <div id="results-container" class="space-y-6">
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h3 class="font-semibold text-gray-600 mb-2 border-b pb-1">Physical Properties</h3>
+                    <div class="w-full flex-grow flex flex-col items-center justify-center p-2 bg-slate-100 rounded-lg shadow-inner min-h-[220px] relative overflow-hidden group">
+                        <canvas id="pcb-canvas" width="400" height="400" class="w-full h-auto object-contain cursor-move"></canvas>
+                        <!-- Zoom Controls Overlay -->
+                        <div class="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="zoomCanvas(1.1)" class="p-1 px-2 bg-white/80 rounded border border-slate-300 text-slate-800 text-xs font-bold hover:bg-white">+</button>
+                            <button onclick="zoomCanvas(0.9)" class="p-1 px-2 bg-white/80 rounded border border-slate-300 text-slate-800 text-xs font-bold hover:bg-white">-</button>
+                            <button onclick="resetZoom()" class="p-1 px-2 bg-white/80 rounded border border-slate-300 text-slate-800 text-[10px] font-bold hover:bg-white">Fit</button>
                         </div>
                     </div>
-                </div>
-            </div>
-            <!-- OUTPUTS -->
-            <div class="lg:col-span-8 flex flex-col gap-4 h-full">
-                <!-- Cycle -->
-                <div class="industrial-panel rounded-xl p-4 flex items-center justify-between">
-                    <div>
-                        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total Cycle Time (T)</h3>
-                        <p class="text-[11px] text-slate-500 mt-0.5">Duration of one charge-listen pulse.</p>
+                    <div class="flex justify-between py-1">
+                        <span>Total Trace Length:</span>
+                        <span id="traceLenOut" class="font-mono font-medium">0.00 m</span>
                     </div>
-                    <div class="text-right">
-                        <div class="text-xl font-mono font-bold text-sky-400" id="totalCycleOut">0.0 ms</div>
-                        <div class="text-[10px] font-mono text-slate-500" id="totalCycleSecOut">0.000 s</div>
+                    <div class="flex justify-between py-1">
+                        <span>(in Mils):</span>
+                        <span id="traceLenMilsOut" class="font-mono font-medium">0 mils</span>
+                    </div>
+                    <div class="flex justify-between py-1">
+                        <span>DC Resistance (@134.2kHz):</span>
+                        <span id="outRes" class="font-mono font-medium">0.00 Ω</span>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
-                    <!-- Max Speed -->
-                    <div class="industrial-panel rounded-xl flex flex-col metric-card-max relative p-6 justify-center">
-                        <h3 class="text-xs font-bold text-indigo-200 uppercase tracking-widest mb-1 z-10">Absolute Max Speed</h3>
-                        <div class="flex items-baseline gap-2 z-10">
-                            <span id="maxSpeedOut" class="text-4xl md:text-5xl font-mono font-extrabold text-white">0.00</span>
-                            <span class="text-lg font-bold text-indigo-300">m/s</span>
+
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h3 class="font-semibold text-blue-800 mb-2 border-b border-blue-200 pb-1">TI RI-STU-MRD2
+                        Requirements</h3>
+
+                    <div class="mt-3">
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-sm font-medium text-gray-700">Inductance (Target: 46 - 47.9 µH)</span>
+                            <span id="outInd" class="text-lg font-mono">0.00 µH</span>
                         </div>
-                        <p class="text-[10px] text-indigo-200/70 mt-3 z-10">Limit: Exactly <strong>2 complete cycles</strong> over the <span id="syncLenMax">--</span> mm antenna.</p>
+                        <div id="indStatus" class="text-right text-sm"></div>
                     </div>
-                    <!-- Optimal Speed -->
-                    <div class="industrial-panel rounded-xl flex flex-col metric-card-opt relative p-6 justify-center">
-                        <h3 class="text-xs font-bold text-emerald-200 uppercase tracking-widest mb-1 z-10">Optimal Target Speed</h3>
-                        <div class="flex items-baseline gap-2 z-10">
-                            <span id="optSpeedOut" class="text-4xl md:text-5xl font-mono font-extrabold text-white">0.00</span>
-                            <span class="text-lg font-bold text-emerald-300">m/s</span>
+
+                    <div class="mt-5">
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-sm font-medium text-gray-700">Q-Factor (Target: 10 - 20)</span>
+                            <span id="outQ" class="text-lg font-mono">0.00</span>
                         </div>
-                        <p class="text-[10px] text-emerald-200/70 mt-3 z-10">Target: Exactly <strong>3 complete cycles</strong> over the <span id="syncLenOpt">--</span> mm antenna for noise buffer.</p>
+                        <div id="qStatus" class="text-right text-sm"></div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- DETAILED MATHEMATICS & REFERENCES -->
-    <div class="w-full glass-panel rounded-xl shadow-lg p-6 lg:p-10 mb-10 text-slate-700 border-t-4 border-t-amber-500">
-        <h2 class="text-2xl font-bold text-slate-800 tracking-tight mb-6 flex items-center gap-2 border-b pb-3 border-slate-200">
-            <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-            Complete Calculation Theory & Reference
-        </h2>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
-            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col h-full w-full">
-                <h3 class="font-bold text-slate-800 mb-3 text-md flex items-center gap-2">
-                    <span class="bg-blue-100 text-blue-800 font-mono px-2 py-0.5 rounded shadow-sm text-sm">1</span> 
-                    Trace Resistance
-                </h3>
-                <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1.1em;">
-                    $$R_{dc} = \rho_{cu} \frac{L_{total}}{W_{tr} \times T_{cu}}$$
-                </div>
-                <div class="text-xs bg-white p-4 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
-                    <p class="mb-2 italic text-slate-500">Defines the baseline attenuation before AC skin-depth characteristics take effect.</p>
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li>\(\rho_{cu}\): Copper Resistivity (\(1.68 \times 10^{-8} \, \Omega{\cdot}m\))</li>
-                        <li>\(L_{total}\): Geometric Trace length in meters</li>
-                        <li>\(W_{tr}, T_{cu}\): Trace Width and Copper Thickness (1oz \(= 35{\mu}m\))</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col h-full w-full">
-                <h3 class="font-bold text-slate-800 mb-3 text-md flex items-center gap-2">
-                    <span class="bg-emerald-100 text-emerald-800 font-mono px-2 py-0.5 rounded shadow-sm text-sm">2</span> 
-                    Modified Wheeler Formula
-                </h3>
-                <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1em;">
-                    $$L = \frac{\mu_{0} N^{2} d_{avg} c_{1}}{2} \Big[ \ln(\frac{c_{2}}{\rho}) + c_{3}\rho + c_{4}\rho^{2} \Big]$$
-                </div>
-                <div class="text-xs bg-white p-4 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
-                    <p class="mb-2 italic text-slate-500">An industry standard empirical formulation for square/rectangular planar spiraled inductors.</p>
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li>\(\mu_{0}\): Vacuum permeability (\(4\pi \cdot 10^{-7}\))</li>
-                        <li>\(\rho\): Fill Factor \((D_{out} - D_{in}) / (D_{out} + D_{in})\)</li>
-                        <li>\(d_{avg}\): Average Diameter \((L_{avg} \cdot W_{avg})\)</li>
-                        <li>\(C_1=1.27, C_2=2.07, C_3=0.18, C_4=0.13\)</li>
-                    </ul>
-                    <p class="mt-2 text-[10px] text-slate-400 font-semibold border-t pt-2">Ref: S. Mohan et al., "Simple Accurate Expressions for Planar Spiral Inductances" (IEEE 1999).</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col h-full w-full">
-                <h3 class="font-bold text-slate-800 mb-3 text-md flex items-center gap-2">
-                    <span class="bg-amber-100 text-amber-800 font-mono px-2 py-0.5 rounded shadow-sm text-sm">3</span> 
-                    Quality Factor & Diagnostics
-                </h3>
-                <div class="overflow-x-auto text-center mb-4 w-full" style="font-size: 1.1em;">
-                    $$Q = \frac{X_{L}}{R} \implies \frac{2 \pi f L}{R}$$
-                </div>
-                <div class="text-xs bg-white p-4 rounded border border-slate-200 text-slate-600 flex-grow shadow-sm">
-                    <p class="mb-2 italic text-slate-500">Dictates the resonance efficiency and FDX operational bandwidth envelope.</p>
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li>\(f\): Target Operating Frequency (134.2 kHz)</li>
-                        <li>Target \(L\) for MRD2: 47.0 µH</li>
-                        <li>Target \(Q\) for MRD2: 10 to 20</li>
-                    </ul>
-                    <p class="mt-2 text-[10px] text-slate-400 font-semibold border-t pt-2">Ref: Texas Instruments RI-STU-MRD2 Target Specifications.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- REPORT MODAL -->
-    <div id="reportModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-60 items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col border-t-8 border-t-indigo-600">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
-                <h2 class="text-xl font-bold text-slate-800">Detailed Mathematical Calculation Report</h2>
-                <div class="flex gap-2">
-                    <button onclick="copyReport()" class="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-semibold hover:bg-indigo-700 transition">Copy to Clipboard</button>
-                    <button onclick="closeDetailedReport()" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded text-sm font-semibold hover:bg-slate-300 transition">Close</button>
-                </div>
-            </div>
-            <div class="p-6 overflow-y-auto flex-grow bg-white text-[13px] md:text-sm font-mono text-slate-700 leading-relaxed" id="reportContent">
-                <!-- Javascript will inject exact markdown style layout here -->
             </div>
         </div>
     </div>
 
     <script>
-        let currentUnit = 'mm'; 
-        
-        function getIcon(isPass) {
-            return isPass 
-                ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
-                : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
-        }
+        let zoomLevel = 1.0;
+        let offset = { x: 0, y: 0 };
+        let isDragging = false;
+        let lastMousePos = { x: 0, y: 0 };
 
-        function toggleUnit() {
-            const newUnit = document.getElementById('unit-selector').value;
-            if(newUnit === currentUnit) return;
-            const fields = ['length', 'width', 'traceW', 'traceS'];
-            fields.forEach(id => {
-                const el = document.getElementById(id);
-                let val = parseFloat(el.value);
-                if(isNaN(val)) return;
-                if(newUnit === 'mils' && currentUnit === 'mm') {
-                    el.value = (val * 39.3701).toFixed(2);
-                } else if(newUnit === 'mm' && currentUnit === 'mils') {
-                    el.value = (val * 0.0254).toFixed(3);
-                }
+        function zoomCanvas(factor) { zoomLevel *= factor; calculate(); }
+        function resetZoom() { zoomLevel = 1.0; offset = { x: 0, y: 0 }; calculate(); }
+
+        function setupCanvasInteractions() {
+            const canvas = document.getElementById('pcb-canvas');
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY > 0 ? 0.9 : 1.1;
+                zoomCanvas(factor);
+            }, { passive: false });
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMousePos = { x: e.clientX, y: e.clientY };
             });
-            currentUnit = newUnit;
-            document.querySelectorAll('.unit-label').forEach(el => { el.innerText = currentUnit; });
-            calculate();
-            calculateSpeed();
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                offset.x += (e.clientX - lastMousePos.x) / zoomLevel;
+                offset.y += (e.clientY - lastMousePos.y) / zoomLevel;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                calculate();
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
         }
 
-        function getMmValue(id) {
-            let val = parseFloat(document.getElementById(id).value);
-            if (currentUnit === 'mils') { return val * 0.0254; }
-            return val;
-        }
-
-        function getDisplayValue(id) {
-            return parseFloat(document.getElementById(id).value);
-        }
-
-        function loadSavedConfigsList() {
-            const listObj = JSON.parse(localStorage.getItem('mrd2_configs') || "{}");
-            const select = document.getElementById('saved-configs');
-            select.innerHTML = '<option value="">Load Preset...</option>';
-            for(const name in listObj) {
-                const opt = document.createElement('option');
-                opt.value = name; opt.innerText = name;
-                select.appendChild(opt);
-            }
-        }
-
-        function saveConfig() {
-            const name = prompt("Enter a custom name to save this configuration:");
-            if(!name) return;
-            const config = {
-                unit: currentUnit,
-                length: document.getElementById('length').value,
-                width: document.getElementById('width').value, turns: document.getElementById('turns').value,
-                traceW: document.getElementById('traceW').value, traceS: document.getElementById('traceS').value,
-                cuWeight: document.getElementById('cuWeight').value, cornerType: document.getElementById('cornerType').value,
-                pcbMat: document.getElementById('pcbMat').value, pcbThick: document.getElementById('pcbThick').value
-            };
-            const listObj = JSON.parse(localStorage.getItem('mrd2_configs') || "{}");
-            listObj[name] = config;
-            localStorage.setItem('mrd2_configs', JSON.stringify(listObj));
-            alert(`Configuration '${name}' saved successfully!`);
-            loadSavedConfigsList();
-            document.getElementById('saved-configs').value = name;
-        }
-
-        function loadConfig() {
-            const name = document.getElementById('saved-configs').value;
-            if(!name) return;
-            const listObj = JSON.parse(localStorage.getItem('mrd2_configs') || "{}");
-            const cfg = listObj[name];
-            if(!cfg) return;
-            if(cfg.unit && cfg.unit !== currentUnit) {
-                document.getElementById('unit-selector').value = cfg.unit;
-                currentUnit = cfg.unit;
-                document.querySelectorAll('.unit-label').forEach(el => { el.innerText = currentUnit; });
-            }
-            document.getElementById('length').value = cfg.length; document.getElementById('width').value = cfg.width;
-            document.getElementById('turns').value = cfg.turns; document.getElementById('traceW').value = cfg.traceW;
-            document.getElementById('traceS').value = cfg.traceS; document.getElementById('cuWeight').value = cfg.cuWeight;
-            document.getElementById('cornerType').value = cfg.cornerType;
-            if(cfg.pcbMat) document.getElementById('pcbMat').value = cfg.pcbMat;
-            if(cfg.pcbThick) document.getElementById('pcbThick').value = cfg.pcbThick;
-            calculate();
-        }
-
-        function drawPCB(L_out, W_out, N, w, s, corner, mat) {
+        function drawPCB(L_out, W_out, N, w, s, corner) {
             const canvas = document.getElementById('pcb-canvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if(mat === "FR4") { canvas.style.backgroundColor = "#064e3b"; } 
-            else if (mat === "Rogers") { canvas.style.backgroundColor = "#0f172a"; } 
-            else if (mat === "Flex") { canvas.style.backgroundColor = "#b45309"; }
-
+            
             const maxDim = Math.max(L_out, W_out);
             if (maxDim <= 0) return;
-            const padding = 20; const scale = (canvas.width - padding * 2) / maxDim;
-            const cx = canvas.width / 2; const cy = canvas.height / 2;
+            
+            ctx.save();
+            ctx.translate(canvas.width/2 + offset.x, canvas.height/2 + offset.y);
+            ctx.scale(zoomLevel, zoomLevel);
 
-            ctx.lineWidth = w * scale; ctx.strokeStyle = "#fbbf24"; 
+            const padding = 20; 
+            const scale = (canvas.width - padding * 2) / maxDim;
+            
+            ctx.lineWidth = w * scale; ctx.strokeStyle = "#2563eb"; 
             ctx.lineCap = corner === "curve" ? "round" : "square";
             if(corner === "curve") { ctx.lineJoin = "round"; } 
             else if (corner === "45") { ctx.lineJoin = "bevel"; } 
             else { ctx.lineJoin = "miter"; }
 
             ctx.beginPath();
-            let left = cx - (L_out * scale) / 2; let right = cx + (L_out * scale) / 2;
-            let top = cy - (W_out * scale) / 2; let bottom = cy + (W_out * scale) / 2;
+            let left = -(L_out * scale) / 2; let right = (L_out * scale) / 2;
+            let top = -(W_out * scale) / 2; let bottom = (W_out * scale) / 2;
             let delta = (w + s) * scale;
             ctx.moveTo(left, top);
 
@@ -534,339 +194,86 @@
                 if(left >= right || top >= bottom) break;
             }
             ctx.stroke();
-        }
-
-        // Global base object for the report dump
-        let lastReportText = "";
-
-        function buildReportString() {
-            // Re-fetch variables safely in MM
-            const L_out = getMmValue('length'); const W_out = getMmValue('width');
-            const N = parseFloat(document.getElementById('turns').value);
-            const w = getMmValue('traceW'); const s = getMmValue('traceS');
-            const cu_oz = parseFloat(document.getElementById('cuWeight').value);
-            const t = cu_oz * 0.035;
-
-            const pitch = w + s;
-            const band = N * pitch;
-            
-            const L_in = L_out - 2*band;
-            const W_in = W_out - 2*band;
-
-            const L_avg = (L_out + L_in) / 2;
-            const W_avg = (W_out + W_in) / 2;
-            
-            const avg_perimeter = 2 * (L_avg + W_avg);
-            // Ignore corner adjustments for simplified text report (which matches their desired output logic)
-            const l_total = N * avg_perimeter;
-            const l_meters = l_total / 1000;
-
-            const A = w * t; 
-            const A_m2 = A / 1000000;
-            const R = (1.68e-8) * (l_meters / A_m2);
-
-            const d_out = (L_out + W_out) / 2;
-            const d_in = (L_in + W_in) / 2;
-            const d_avg = (d_out + d_in) / 2;
-            const d_avg_m = d_avg / 1000;
-            const fill_ratio = (d_out - d_in) / (d_out + d_in);
-
-            const u0 = 4 * Math.PI * 1e-7; // 1.2566e-6
-            const c1 = 1.27, c2 = 2.07, c3 = 0.18, c4 = 0.13;
-            
-            const partA = (u0 * Math.pow(N, 2) * d_avg_m * c1) / 2;
-            const partB = Math.log(c2 / fill_ratio) + (c3 * fill_ratio) + (c4 * Math.pow(fill_ratio, 2));
-            const L_henrys = partA * partB;
-            const L_uH = L_henrys * 1e6;
-
-            const freq = 134200;
-            const XL = 2 * Math.PI * freq * L_henrys;
-            const Q = XL / R;
-
-            const report = `Here is the complete, step-by-step mathematical calculation for your specific ${L_out}mm × ${W_out}mm antenna design.
-
-This is written in standard text format so you can easily copy and paste it directly into your engineering documentation or Word document.
-
-***
-
-### 1. The Physical Parameters (The Inputs)
-* Outer Length (L_out) = ${L_out} mm
-* Outer Width (W_out) = ${W_out} mm
-* Number of Turns (N) = ${N}
-* Trace Width (w) = ${w} mm
-* Trace Spacing (s) = ${s} mm
-* Copper Thickness (t) for ${cu_oz}oz = ${t.toFixed(3)} mm
-
-### 2. Calculating the Geometry & Trace Length
-First, we find how much space the ${N} turns of copper take up, which tells us the size of the empty center void.
-* Trace Pitch = Width + Spacing = ${w} mm + ${s} mm = ${pitch.toFixed(3)} mm
-* Total Trace Band = ${N} turns × ${pitch.toFixed(3)} mm = ${band.toFixed(3)} mm (per side)
-
-Now we calculate the inner void dimensions by subtracting the trace bands from the outer dimensions (we subtract 2 times the band, because it exists on both sides of the rectangle).
-* Inner Length (L_in) = ${L_out} mm - (2 × ${band.toFixed(3)} mm) = ${L_in.toFixed(3)} mm
-* Inner Width (W_in) = ${W_out} mm - (2 × ${band.toFixed(3)} mm) = ${W_in.toFixed(3)} mm
-
-Next, we find the "Average" loop size to calculate the total length of the wire.
-* Average Length = (${L_out} + ${L_in.toFixed(3)}) / 2 = ${L_avg.toFixed(3)} mm
-* Average Width = (${W_out} + ${W_in.toFixed(3)}) / 2 = ${W_avg.toFixed(3)} mm
-* Average Perimeter = 2 × (${L_avg.toFixed(3)} + ${W_avg.toFixed(3)}) = ${avg_perimeter.toFixed(3)} mm (or ${ (avg_perimeter/1000).toFixed(4)} meters)
-* **Total Trace Length (l)** = ${N} turns × ${ (avg_perimeter/1000).toFixed(4)} meters = **${l_meters.toFixed(2)} meters**
-
-### 3. Calculating DC Trace Resistance (R)
-We use the standard copper resistivity (ρ = 1.68 × 10⁻⁸ Ω·m) against the cross-sectional area of your trace.
-* Area (A) = Trace Width × Copper Thickness = ${w} mm × ${t.toFixed(3)} mm = ${A.toFixed(5)} mm²
-* Convert Area to meters squared: ${A_m2.toFixed(10)} m²
-* Formula: R = ρ × (l / A)
-* R = (1.68 × 10⁻⁸) × (${l_meters.toFixed(2)} / ${A_m2.toFixed(10)})
-* **Resistance (R) = ${R.toFixed(2)} Ω**
-
-### 4. Calculating Inductance (L) - Modified Wheeler Formula
-For rectangular planar coils, the industry standard is the Modified Wheeler Formula. 
-
-First, we calculate the "Fill Ratio" (how hollow the coil is) and the average diameter.
-* Avg Outer Diameter (d_out) = (${L_out} + ${W_out}) / 2 = ${d_out.toFixed(3)} mm
-* Avg Inner Diameter (d_in) = (${L_in.toFixed(3)} + ${W_in.toFixed(3)}) / 2 = ${d_in.toFixed(3)} mm
-* Average Diameter (d_avg) = (${d_out.toFixed(3)} + ${d_in.toFixed(3)}) / 2 = ${d_avg.toFixed(3)} mm (or ${d_avg_m.toFixed(4)} meters)
-* Fill Ratio (ρf) = (d_out - d_in) / (d_out + d_in) = ${(d_out - d_in).toFixed(3)} / ${(d_out + d_in).toFixed(3)} = ${fill_ratio.toFixed(3)}
-
-Now we apply the Wheeler constants for rectangular shapes (c1 = 1.27, c2 = 2.07, c3 = 0.18, c4 = 0.13) and magnetic permeability (μ0 = 1.2566 × 10⁻⁶).
-* Part A = (μ0 × N² × d_avg × c1) / 2
-* Part A = (1.2566×10⁻⁶ × ${N*N} × ${d_avg_m.toFixed(4)} × 1.27) / 2 = ${partA.toFixed(8)}
-* Part B = ln(c2 / ρf) + (c3 × ρf) + (c4 × ρf²)
-* Part B = ln(2.07 / ${fill_ratio.toFixed(3)}) + (0.18 × ${fill_ratio.toFixed(3)}) + (0.13 × ${(fill_ratio*fill_ratio).toFixed(3)}) = ${partB.toFixed(3)}
-* L = Part A × Part B
-* L = ${partA.toFixed(8)} × ${partB.toFixed(3)} = ${L_henrys.toFixed(8)} Henrys
-* **Inductance (L) = ${L_uH.toFixed(2)} µH**
-
-### 5. Calculating Quality Factor (Q)
-Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 134,200 Hz), and divide it by the DC Resistance.
-* XL = 2 × π × f × L
-* XL = 2 × 3.14159 × 134200 × ${L_henrys.toFixed(8)} = ${XL.toFixed(2)} Ω
-* Q = XL / R
-* Q = ${XL.toFixed(2)} / ${R.toFixed(2)} 
-* **Q-Factor = ${Q.toFixed(1)}**`;
-
-            lastReportText = report;
-            return report.replace(/\n/g, '<br>').replace(/### (.*?)\<br\>/g, '<h3 class="text-base font-bold text-indigo-700 mt-4 mb-1 border-b pb-1">$1</h3>').replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900">$1</strong>').replace(/\*(.*?)\<br\>/g, '<div class="ml-4 flex gap-2"><span class="text-indigo-400">•</span> <span>$1</span></div>');
-        }
-
-        function openDetailedReport() {
-            try {
-                // Ensure latest values
-                document.getElementById('reportContent').innerHTML = buildReportString();
-                document.getElementById('reportModal').classList.remove('hidden');
-                document.getElementById('reportModal').classList.add('flex');
-            } catch(e) {
-                alert("Cannot generate report for invalid geometry. Please fix errors first.");
-            }
-        }
-
-        function closeDetailedReport() {
-            document.getElementById('reportModal').classList.add('hidden');
-            document.getElementById('reportModal').classList.remove('flex');
-        }
-
-        function copyReport() {
-            navigator.clipboard.writeText(lastReportText).then(() => {
-                alert("Calculation report copied to clipboard!");
-            });
-        }
-
-
-        function computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, shiftTolPercent=0) {
-            const freq = 134200; 
-            const rho_cu = 1.68e-8; 
-            const mu0 = 4 * Math.PI * 1e-7;
-
-            const pitch = w + s;
-            let w_eff = w * (1 - shiftTolPercent);
-            let s_eff = pitch - w_eff;
-            if (s_eff <= 0.01) s_eff = 0.01; 
-
-            const cu_thick = cu_oz * 0.035; 
-            const L_in = L_out - 2*N*pitch; 
-            const W_in = W_out - 2*N*pitch;
-
-            if (L_in <= 0 || W_in <= 0) { throw new Error(`Overlapping traces detected at center.`); }
-
-            const L_avg = (L_out + L_in) / 2;
-            const W_avg = (W_out + W_in) / 2;
-            let base_perimeter = 2 * (L_avg + W_avg);
-
-            let corner_adj = 0;
-            if (corner === "45") { corner_adj = 4 * (2 - Math.sqrt(2)) * w_eff; } 
-            else if (corner === "curve") { corner_adj = 4 * (2 - (Math.PI/2)) * w_eff; }
-            
-            const adj_perimeter = base_perimeter - corner_adj;
-            const total_len_m = (N * adj_perimeter) / 1000;
-
-            const area_m2 = (w_eff / 1000) * (cu_thick / 1000);
-            const R = rho_cu * (total_len_m / area_m2);
-
-            const d_out = (L_out + W_out) / 2;
-            const d_in = (L_in + W_in) / 2;
-            const d_avg = (d_out + d_in) / 2 / 1000; 
-            const fill_ratio = (d_out - d_in) / (d_out + d_in);
-            
-            const c1 = 1.27, c2 = 2.07, c3 = 0.18, c4 = 0.13;
-            const L_est = (mu0 * Math.pow(N, 2) * d_avg * c1 / 2) * (Math.log(c2 / fill_ratio) + c3 * fill_ratio + c4 * Math.pow(fill_ratio, 2));
-            
-            let self_induct_modifier = 1 + (shiftTolPercent * 0.05); 
-            let finalL = L_est * 1e6 * self_induct_modifier;
-
-            const XL = 2 * Math.PI * freq * (finalL * 1e-6);
-            const Q = XL / R;
-
-            const diagLength = Math.sqrt(L_out*L_out + W_out*W_out); 
-            let distEst = (diagLength * 0.95) * (Q / 15.0); 
-            distEst = Math.max(10, Math.min(distEst, 350)) / 10; 
-            
-            let radPower = (R * Math.pow(0.2, 2)) * 1000;
-
-            return {L_uH: finalL, Q: Q, R: R, Dist: distEst, Power: radPower, Length_m: total_len_m};
+            ctx.restore();
         }
 
         function calculate() {
-            const L_out = getMmValue('length'); const W_out = getMmValue('width');
-            const N = parseFloat(document.getElementById('turns').value);
-            const w = getMmValue('traceW'); const s = getMmValue('traceS');
-            
+            const freq = 134200;
+            const rho_cu = 1.68e-8;
+            const mu0 = 4 * Math.PI * 1e-7;
+
+            const L_out = parseFloat(document.getElementById('length').value);
+            const W_out = parseFloat(document.getElementById('width').value);
+            const N = parseInt(document.getElementById('turns').value);
+            const w = parseFloat(document.getElementById('traceW').value);
+            const s = parseFloat(document.getElementById('traceS').value);
             const cu_oz = parseFloat(document.getElementById('cuWeight').value);
             const corner = document.getElementById('cornerType').value;
-            const mat = document.getElementById('pcbMat').value;
-
-            const tolActive = document.getElementById('tolActive').checked;
-            const tolVal = parseFloat(document.getElementById('tolVal').value || 10) / 100.0;
 
             const errDiv = document.getElementById('error-msg');
-            const tolDiv = document.getElementById('tolOutputs');
+            const resDiv = document.getElementById('results-container');
 
             try {
-                if(isNaN(L_out) || isNaN(W_out) || isNaN(N) || isNaN(w) || isNaN(s)) {
-                    throw new Error("Missing parameters.");
-                }
+                const cu_thick = cu_oz * 0.035;
+                const L_in = L_out - 2 * N * (w + s);
+                const W_in = W_out - 2 * N * (w + s);
 
-                const base = computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, 0);
+                if (L_in <= 0 || W_in <= 0) throw new Error("Geometry Error: Too many turns.");
 
-                if(tolActive) {
-                    tolDiv.style.display = 'flex';
-                    try {
-                        const UE = computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, -tolVal);
-                        const OE = computeInductanceCore(L_out, W_out, N, w, s, cu_oz, corner, tolVal);
-                        
-                        document.getElementById('tol_UE_L').innerText = `${UE.L_uH.toFixed(2)} µH`;
-                        document.getElementById('tol_UE_Q').innerText = `${UE.Q.toFixed(2)}`;
-                        document.getElementById('tol_UE_R').innerText = `${UE.R.toFixed(2)} Ω`;
-                        document.getElementById('tol_UE_Dist').innerText = `~${UE.Dist.toFixed(1)} cm`;
-                        document.getElementById('tol_UE_Pow').innerText = `~${UE.Power.toFixed(0)} mW`;
+                const L_avg = (L_out + L_in) / 2;
+                const W_avg = (W_out + W_in) / 2;
+                let base_perimeter = 2 * (L_avg + W_avg);
 
-                        document.getElementById('tol_OE_L').innerText = `${OE.L_uH.toFixed(2)} µH`;
-                        document.getElementById('tol_OE_Q').innerText = `${OE.Q.toFixed(2)}`;
-                        document.getElementById('tol_OE_R').innerText = `${OE.R.toFixed(2)} Ω`;
-                        document.getElementById('tol_OE_Dist').innerText = `~${OE.Dist.toFixed(1)} cm`;
-                        document.getElementById('tol_OE_Pow').innerText = `~${OE.Power.toFixed(0)} mW`;
-                    } catch(e) {
-                         alert("Tolerance Geometry collision! " + e.message);
-                    }
-                } else {
-                    tolDiv.style.display = 'none';
-                }
+                let corner_adj = 0;
+                if (corner === "45") corner_adj = 4 * (2 - Math.sqrt(2)) * w;
+                else if (corner === "curve") corner_adj = 4 * (2 - (Math.PI / 2)) * w;
+
+                const adj_perimeter = base_perimeter - corner_adj;
+                const total_len_m = (N * adj_perimeter) / 1000;
+
+                const area_m2 = (w / 1000) * (cu_thick / 1000);
+                const R = rho_cu * (total_len_m / area_m2);
+
+                const d_out = (L_out + W_out) / 2;
+                const d_in = (L_in + W_in) / 2;
+                const d_avg = (d_out + d_in) / 2 / 1000;
+                const fill_ratio = (d_out - d_in) / (d_out + d_in);
+
+                const c1 = 1.27, c2 = 2.07, c3 = 0.18, c4 = 0.13;
+                const L_est = (mu0 * Math.pow(N, 2) * d_avg * c1 / 2) * (Math.log(c2 / fill_ratio) + c3 * fill_ratio + c4 * Math.pow(fill_ratio, 2));
+                const L_uH = L_est * 1e6;
+                const Q = (2 * Math.PI * freq * L_est) / R;
 
                 errDiv.classList.add('hidden');
-                
-                const indEl = document.getElementById('outInd'); const indStat = document.getElementById('indStatus');
-                indEl.innerText = base.L_uH.toFixed(2) + " µH";
-                if (base.L_uH >= 46.0 && base.L_uH <= 47.9) {
-                    indStat.innerHTML = `<span class="pass-text">${getIcon(true)} Valid</span>`;
-                    indEl.className = "text-xl font-mono font-bold text-emerald-600";
-                } else {
-                    indStat.innerHTML = `<span class="fail-text">${getIcon(false)} Critical Fail</span>`;
-                    indEl.className = "text-xl font-mono font-bold text-red-600";
-                }
+                resDiv.classList.remove('opacity-20');
 
-                const qEl = document.getElementById('outQ'); const qStat = document.getElementById('qStatus');
-                qEl.innerText = base.Q.toFixed(2);
-                if (base.Q >= 10.0 && base.Q <= 20.0) {
-                    qStat.innerHTML = `<span class="pass-text">${getIcon(true)} Valid</span>`;
-                    qEl.className = "text-xl font-mono font-bold text-emerald-600";
-                } else {
-                    qStat.innerHTML = `<span class="fail-text">${getIcon(false)} Limit Exceeded</span>`;
-                    qEl.className = "text-xl font-mono font-bold text-red-600";
-                }
+                document.getElementById('traceLenOut').innerText = total_len_m.toFixed(2) + " m";
+                document.getElementById('traceLenMilsOut').innerText = (total_len_m * 39370).toLocaleString(undefined, {maximumFractionDigits: 0}) + " mils";
+                document.getElementById('outRes').innerText = R.toFixed(2) + " Ω";
 
-                const resEl = document.getElementById('outRes'); const resStat = document.getElementById('resStatus');
-                resEl.innerText = base.R.toFixed(2) + " Ω";
-                if (base.R >= 1.5 && base.R <= 4.5) {
-                    resStat.innerHTML = `<span class="pass-text">${getIcon(true)} Valid</span>`;
-                    resEl.className = "text-xl font-mono font-bold text-emerald-600";
-                } else {
-                    resStat.innerHTML = `<span class="fail-text">${getIcon(false)} Heavy Attenuation</span>`;
-                    resEl.className = "text-xl font-mono font-bold text-red-600";
-                }
+                const indEl = document.getElementById('outInd');
+                const indStat = document.getElementById('indStatus');
+                indEl.innerText = L_uH.toFixed(2) + " µH";
+                indEl.className = (L_uH >= 46.0 && L_uH <= 47.9) ? "text-lg font-mono pass" : "text-lg font-mono fail";
+                indStat.innerHTML = (L_uH >= 46.0 && L_uH <= 47.9) ? '<span class="pass">✓ PASS</span>' : '<span class="fail">✗ FAIL</span>';
 
-                let gradeClass = "badge-poor"; let gradeText = "Fails Req";
-                if(base.L_uH >= 46.0 && base.L_uH <= 47.9 && base.Q >= 10 && base.Q <= 20) {
-                    const lDist = Math.abs(base.L_uH - 47.0); const qDist = Math.abs(base.Q - 15.0);
-                    if(lDist <= 0.2 && qDist <= 2.0) { gradeText = "Excellent"; gradeClass = "badge-excellent"; } 
-                    else if (lDist <= 0.5 && qDist <= 4.0) { gradeText = "Best"; gradeClass = "badge-best"; } 
-                    else if (lDist <= 1.0) { gradeText = "Good"; gradeClass = "badge-good"; } 
-                    else { gradeText = "Average"; gradeClass = "badge-average"; }
-                }
-                
-                document.getElementById('antennaGrade').innerHTML = `<span class="metric-badge ${gradeClass}">${gradeText}</span>`;
-                if(gradeClass === "badge-poor") {
-                    document.getElementById('readDist').innerText = "---"; document.getElementById('powerRad').innerText = "---";
-                } else {
-                    document.getElementById('readDist').innerText = `~ ${base.Dist.toFixed(1)} cm`;
-                    document.getElementById('powerRad').innerText = `~ ${base.Power.toFixed(0)} mW`;
-                    document.getElementById('traceLenOut').innerText = `${base.Length_m.toFixed(2)} m`;
-                }
+                const qEl = document.getElementById('outQ');
+                const qStat = document.getElementById('qStatus');
+                qEl.innerText = Q.toFixed(2);
+                qEl.className = (Q >= 10.0 && Q <= 20.0) ? "text-lg font-mono pass" : "text-lg font-mono fail";
+                qStat.innerHTML = (Q >= 10.0 && Q <= 20.0) ? '<span class="pass">✓ PASS</span>' : '<span class="fail">✗ FAIL</span>';
 
-                drawPCB(L_out, W_out, N, w, s, corner, mat);
+                drawPCB(L_out, W_out, N, w, s, corner);
 
             } catch (e) {
-                errDiv.innerHTML = `<span class="font-bold">Error:</span> ${e.message}`;
+                errDiv.innerText = e.message;
                 errDiv.classList.remove('hidden');
-                document.getElementById('antennaGrade').innerHTML = `<span class="metric-badge badge-poor">ERR</span>`;
-                const canvas = document.getElementById('pcb-canvas'); const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                resDiv.classList.add('opacity-20');
             }
-            
-            // Sync speeds
-            calculateSpeed();
         }
 
-        function calculateSpeed() {
-            // Read antenna length strictly mapped to PCB Outer X input (converted safely to mm via our helper)
-            const antLength_mm = getMmValue('length') || 0;
-            const charge_ms = parseFloat(document.getElementById('chargeTime').value) || 0;
-            const listen_ms = parseFloat(document.getElementById('listenTime').value) || 0;
-            const overhead_ms = parseFloat(document.getElementById('overheadTime').value) || 0;
-
-            const antLength_m = antLength_mm / 1000.0;
-            const cycle_ms = charge_ms + listen_ms + overhead_ms;
-            const cycle_s = cycle_ms / 1000.0;
-
-            document.getElementById('totalCycleOut').innerText = cycle_ms.toFixed(1) + " ms";
-            document.getElementById('totalCycleSecOut').innerText = cycle_s.toFixed(3) + " s";
-            document.getElementById('syncLenMax').innerText = antLength_mm.toFixed(1);
-            document.getElementById('syncLenOpt').innerText = antLength_mm.toFixed(1);
-
-            if (cycle_s <= 0 || antLength_m <= 0) {
-                document.getElementById('maxSpeedOut').innerText = "0.00";
-                document.getElementById('optSpeedOut').innerText = "0.00";
-                return;
-            }
-
-            const max_speed = antLength_m / (2 * cycle_s);
-            const opt_speed = antLength_m / (3 * cycle_s);
-
-            document.getElementById('maxSpeedOut').innerText = max_speed.toFixed(3);
-            document.getElementById('optSpeedOut').innerText = opt_speed.toFixed(3);
-        }
-
-        window.onload = function() { loadSavedConfigsList(); calculate(); calculateSpeed(); };
-
+        window.onload = function() { setupCanvasInteractions(); calculate(); };
     </script>
 </body>
+
 </html>
