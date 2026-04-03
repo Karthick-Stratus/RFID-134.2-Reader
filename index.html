@@ -340,12 +340,12 @@
                     <style>
                         @keyframes slide-belt {
                             0% { transform: translateX(0%); }
-                            100% { transform: translateX(-192px); } /* 120px pod + 72px gap = 192px visual pitch */
+                            100% { transform: translateX(-144px); } /* 120px pod + 24px gap = 144px visual pitch */
                         }
                         .animate-belt { animation: slide-belt var(--anim-speed, 2s) linear infinite; }
                     </style>
                     <div class="absolute top-0 w-full bg-slate-800/80 backdrop-blur text-[10px] text-center py-1 font-bold text-slate-300 border-b border-slate-700 z-20 shadow-md">
-                        RI-STU-MRD2 Simulation: 25cm Pods (30cm Gap) | Tag: TRPGR30ATGB (Mounted Underneath)
+                        RI-STU-MRD2 Simulation: 25cm Pods (5cm Gap) | Tag: TRPGR30ATGB (Mounted Underneath)
                     </div>
                     
                     <div class="w-full h-full relative flex items-end justify-center overflow-hidden pb-4">
@@ -364,9 +364,9 @@
                         <div class="absolute bottom-9 left-0 w-[200%] h-16 flex animate-belt flex-nowrap z-20" id="conveyorTrack">
                             <script>
                                 let podsHTML = '';
-                                for(let i=0; i<10; i++) {
+                                for(let i=0; i<15; i++) {
                                     podsHTML += `
-                                    <div class="w-[120px] h-14 bg-indigo-900/90 border-t-2 border-l border-r border-indigo-500 rounded-t-sm flex flex-col items-center justify-start pt-2 relative mx-[36px] flex-shrink-0 shadow-lg">
+                                    <div class="w-[120px] h-14 bg-indigo-900/90 border-t-2 border-l border-r border-indigo-500 rounded-t-sm flex flex-col items-center justify-start pt-2 relative mx-[12px] flex-shrink-0 shadow-lg">
                                         <span class="text-[9px] font-bold text-indigo-200 uppercase tracking-widest">Pod System</span>
                                         <span class="text-[7px] text-indigo-400">25CM</span>
                                         <div class="absolute -bottom-1 w-12 h-2 bg-amber-400 rounded-sm flex items-center justify-center shadow-[0_0_8px_rgba(251,191,36,0.6)] border border-amber-600">
@@ -984,8 +984,8 @@ Finally, we calculate the AC Reactance (XL) at the TI reader's frequency (f = 13
             const bloom = document.getElementById('simFieldBloom');
             if (track && bloom) {
                 if (opt_speed > 0.05) {
-                    // Physical pitch is 55cm (0.55m). Time per pitch = distance / speed.
-                    const animDuration = Math.max(0.1, 0.55 / opt_speed);
+                    // Physical pitch is 30cm (25cm pod + 5cm gap = 0.30m). Time per pitch = distance / speed.
+                    const animDuration = Math.max(0.1, 0.30 / opt_speed);
                     track.style.setProperty('--anim-speed', animDuration + 's');
                     track.style.animationPlayState = 'running';
                     // Bloom scales visually roughly with the effective window size
