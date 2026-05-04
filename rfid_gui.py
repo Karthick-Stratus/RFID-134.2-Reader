@@ -1,71 +1,48 @@
-import serial
-import serial.tools.list_ports
-import threading
-import time
+import serial, serial.tools.list_ports, threading, time
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
 
-# ============================================================
-# TI RI-STU-MRD2 LMP Protocol - Verified from TI Microreader II
-# ============================================================
-# KEY FINDINGS from Microreader II raw TX/RX capture:
+# =====================================================
+# TI RI-STU-MRD2 — ECM Protocol (Easy Code Mode)
+# Confirmed from RI-STU-MRD2.md datasheet (SCBU049)
 #
-# 1. READ PAGE COMMAND (what Microreader II actually sends):
-#    TX: 01 04 80 03 03 [page] [BCC]
-#    BCC = 0x04^0x80^0x03^0x03^page
+# ECM Frame: 01 [LEN] 0x80 [DevCode] [DevCmd] [params] [BCC]
+# BCC = XOR of all bytes after SOH (LEN onwards)
 #
-# 2. READ PAGE RESPONSE (success):
-#    RX: 01 0A 00 00 [Byte3][Byte2][Byte1][Byte0][x][x][x][x] BCC
-#    Length=0x0A=10, Status=0x00
+# Device Code 0x03 = HDX+ (TMS37190)
 #
-# 3. STATUS CODES:
-#    0x00 = SUCCESS
-#    0x03 = No Tag Detected
-#    0x07 = Other/Raw HDX data (noise OR real tag in raw mode)
+# Key ECM Commands for HDX+:
+#   0x00 = Charge-only Read   TX: 01 03 80 03 00 80
+#   0x01 = General Read       TX: 01 03 80 03 01 81
+#   0x03 = Read Multi Block   TX: 01 04 80 03 03 [blk] [BCC]
+#   0x05 = Read UID           TX: 01 03 80 03 05 85
+#   0x06 = Read Configuration TX: 01 03 80 03 06 86
 #
-# 4. WHY PYTHON FAILS vs Microreader II:
-#    - Microreader II uses READ PAGE commands (0x80 based)
-#    - Microreader II polls every ~80ms (HDX charge+listen cycle)
-#    - CMD 0x00 "Single Read" requires EXACT timing with HDX cycle
-#    - 500ms poll interval misses most tag read windows
+# Charge-only = fast UID (RO/RW), 50ms charge burst
+# General Read = full memory dump including Animal ID
+# Poll interval: 80ms (HDX cycle = 50ms charge + 20ms listen + overhead)
 #
-# 5. SOLUTION:
-#    - Use READ PAGE command (0x80) to read Chip ID pages 1-3
-#    - Poll at 100ms intervals (10x per second)
-#    - Page 1 = Chip ID Byte 3,2,1,0 (address 0x01)
-#    - Page 2 = Reserved + Chip ID Byte 6,5,4 (address 0x02)
-#    - Page 3 = Reserved + Chip ID Byte 9,8,7 (address 0x03)
-# ============================================================
+# STATUS BYTE (LMP Table 12):
+#   bits[1:0] = 00 → RO tag     bits[1:0] = 01 → R/W tag
+#   bits[1:0] = 10 → MPT/SAMPT  bits[1:0] = 11 → Other/Noise
+#   bit 5 = 1 → S/W version follows
+#   Status 0x03 = No Tag
+# =====================================================
 
-class MRD2Reader:
-    SOH            = 0x01
-    CMD_VERSION    = 0x03
-    CMD_SINGLE     = 0x00   # Single read (HDX timing sensitive)
-    CMD_READ_PAGE  = 0x80   # Read page sub-cmd byte (per Microreader II capture)
+ECM_DEV_HDX = 0x03
 
-    PAGE_LABELS = [
-        "Chip ID Byte 3,2,1,0",
-        "Reserved & Chip ID Byte 6,5,4",
-        "Reserved & Chip ID Byte 9,8,7",
-        "Config Byte 2,1 & CRC MSB,LSB",
-        "User Memory","User Memory","User Memory","User Memory",
-        "User Memory","User Memory","User Memory","User Memory",
-        "User Memory","User Memory",
-        "Animal ID Byte 3,2,1,0",
-        "Animal ID Byte 7,6,5,4",
-    ]
+class MRD2:
+    SOH = 0x01
 
-    def __init__(self, port=None, baudrate=9600, timeout=0.3):
-        self.port     = port
-        self.baudrate = baudrate
-        self.timeout  = timeout
-        self.ser      = None
+    def __init__(self, port=None, baud=9600, timeout=0.3):
+        self.port    = port
+        self.baud    = baud
+        self.timeout = timeout
+        self.ser     = None
 
-    # ── Serial helpers ─────────────────────────────────────────
     def connect(self):
         try:
-            self.ser = serial.Serial(self.port, self.baudrate,
-                                     timeout=self.timeout)
+            self.ser = serial.Serial(self.port, self.baud, timeout=self.timeout)
             return True
         except Exception as e:
             return str(e)
@@ -74,385 +51,446 @@ class MRD2Reader:
         if self.ser and self.ser.is_open:
             self.ser.close()
 
-    def _bcc(self, data):
+    @staticmethod
+    def _bcc(data):
         v = 0
         for b in data: v ^= b
         return v
 
-    def _transact(self, payload):
-        """Send [SOH]+payload+[BCC] and return raw bytes."""
+    def _cmd(self, payload):
+        """Send [SOH]+payload+[BCC], return raw bytes."""
         if not self.ser or not self.ser.is_open:
             return None
         bcc = self._bcc(payload)
         pkt = bytearray([self.SOH] + payload + [bcc])
         self.ser.reset_input_buffer()
         self.ser.write(pkt)
-        return self.ser.read(32)
+        return self.ser.read(64)
 
     def _parse(self, raw):
-        """Return list of data bytes, 'BCC_ERR', or None."""
+        """Returns data bytes list, 'BCC_ERR', or None."""
         if not raw or len(raw) < 4 or raw[0] != self.SOH:
             return None
         ln = raw[1]
         if len(raw) < ln + 3:
             return None
-        data = raw[2:2+ln]
-        if self._bcc([ln] + list(data)) != raw[2+ln]:
+        data = list(raw[2:2+ln])
+        if self._bcc([ln] + data) != raw[2+ln]:
             return "BCC_ERR"
-        return list(data)
+        return data
 
-    # ── Commands ───────────────────────────────────────────────
+    # ── ECM Commands ─────────────────────────────────
     def get_version(self):
-        raw = self._transact([0x01, self.CMD_VERSION])
+        """Setup Mode: Get firmware version. CMD1=0x83 CMD2=0x00"""
+        raw = self._cmd([0x02, 0x83, 0x00])
         d   = self._parse(raw)
-        if d and d != "BCC_ERR":
-            return ".".join(str(b) for b in d)
+        if d and d != "BCC_ERR" and len(d) >= 1:
+            return f"v{d[0] >> 4}.{d[0] & 0x0F}"
         return None
 
-    def read_page(self, page):
-        """
-        Read one 4-byte memory page (1-16).
-        Mirrors exact Microreader II TX: 01 04 80 03 03 [page] [BCC]
-        Returns [B3,B2,B1,B0] or None.
-        """
-        payload = [0x04, 0x80, 0x03, 0x03, page]
-        raw = self._transact(payload)
-        if raw:
-            raw_hex = " ".join(f"{b:02X}" for b in raw)
-        d = self._parse(raw)
-        if d and d != "BCC_ERR" and len(d) >= 4:
-            if d[0] == 0x00:           # status OK
-                return d[2:6]          # [B3, B2, B1, B0]
-        return None
+    def charge_read(self):
+        """ECM Charge-only Read — fastest UID. Returns (status, uid_hex) or None."""
+        raw = self._cmd([0x03, 0x80, ECM_DEV_HDX, 0x00])
+        d   = self._parse(raw)
+        if not d or d == "BCC_ERR":
+            return None
+        status = d[0]
+        if status == 0x03:          # No tag
+            return None
+        tag_type = status & 0x03    # bits 0,1: 00=RO 01=RW 10=MPT 11=Other
+        if tag_type == 0x03:        # noise
+            return None
+        uid_raw = d[1:9] if len(d) >= 9 else []
+        if not uid_raw:
+            return None
+        uid_hex = "".join(f"{b:02X}" for b in reversed(uid_raw))
+        return status, uid_hex
+
+    def general_read(self):
+        """ECM General Read — returns all memory blocks for HDX+."""
+        raw = self._cmd([0x03, 0x80, ECM_DEV_HDX, 0x01])
+        d   = self._parse(raw)
+        if not d or d == "BCC_ERR":
+            return None, None, None
+        status = d[0]
+        s2     = d[1] if len(d) > 1 else 0
+        return status, s2, d[2:]   # status1, status2, data bytes
 
     def read_uid(self):
-        """
-        Read Chip ID from pages 1+2, reconstruct 8-byte UID.
-        Returns dict with uid_hex, uid_bytes, animal_id_dec or None.
-        """
-        p1 = self.read_page(1)   # Byte3,2,1,0 of Chip ID
-        time.sleep(0.02)
-        p2 = self.read_page(2)   # Reserved,Byte6,5,4
-        if not p1 or not p2:
+        """ECM Read UID command — HDX+ specific."""
+        raw = self._cmd([0x03, 0x80, ECM_DEV_HDX, 0x05])
+        d   = self._parse(raw)
+        if not d or d == "BCC_ERR":
             return None
-        # p1 = [B3,B2,B1,B0], p2 = [Res,B6,B5,B4]
-        b3,b2,b1,b0 = p1
-        _,b6,b5,b4  = p2
-        uid_msb = [b6,b5,b4,b3,b2,b1,b0]   # 7 known bytes; B7 is MSB
-        # Read page 3 for Byte9,8,7
-        p3 = self.read_page(3)
-        b7 = p3[3] if p3 else 0x00          # [Res,B9,B8,B7]
-        uid_bytes = [b7,b6,b5,b4,b3,b2,b1,b0]
-        uid_hex   = "".join(f"{b:02X}" for b in uid_bytes)
-        val       = int.from_bytes(uid_bytes, "big")
-        animal_id = val & 0x3FFFFFFFFF
-        return {"uid_hex": uid_hex,
-                "uid_bytes": uid_bytes,
-                "animal_id": animal_id,
-                "page1": p1, "page2": p2, "page3": p3}
+        status = d[0]
+        if status == 0x03 or (status & 0x03) == 0x03:
+            return None
+        uid_raw = d[2:10] if len(d) >= 10 else d[1:9]
+        if not uid_raw:
+            return None
+        return "".join(f"{b:02X}" for b in reversed(uid_raw))
 
-    def read_all_pages(self):
-        """Read pages 1-16. Returns list of [B3,B2,B1,B0] or None."""
+    def read_block(self, block_num):
+        """ECM Read Multi Block — single block."""
+        raw = self._cmd([0x04, 0x80, ECM_DEV_HDX, 0x03, block_num])
+        d   = self._parse(raw)
+        if not d or d == "BCC_ERR" or d[0] == 0x03:
+            return None
+        return d[2:6] if len(d) >= 6 else None
+
+    def read_all_blocks(self, count=16):
         result = []
-        for pg in range(1, 17):
-            result.append(self.read_page(pg))
-            time.sleep(0.03)
+        for i in range(count):
+            result.append(self.read_block(i))
+            time.sleep(0.02)
         return result
 
-    def single_read_raw(self):
-        """
-        CMD 0x00 single read — returns raw hex string for diagnostics.
-        Status 0x03 = no tag, 0x07 = raw HDX data (real or noise).
-        """
-        raw = self._transact([0x01, self.CMD_SINGLE])
-        if not raw:
-            return None, None
-        hex_str = " ".join(f"{b:02X}" for b in raw)
-        d = self._parse(raw)
-        return hex_str, d
 
+# ── GUI ────────────────────────────────────────────
 
-# ── GUI ────────────────────────────────────────────────────────
+PAGE_LABELS = [
+    "Chip ID Byte 3,2,1,0",
+    "Reserved & Chip ID Byte 6,5,4",
+    "Reserved & Chip ID Byte 9,8,7",
+    "Config Byte 2,1 & CRC MSB,LSB",
+    "User Memory","User Memory","User Memory","User Memory",
+    "User Memory","User Memory","User Memory","User Memory",
+    "User Memory","User Memory",
+    "Animal ID Byte 3,2,1,0",
+    "Animal ID Byte 7,6,5,4",
+]
 
 class App:
     def __init__(self, root):
         self.root    = root
-        self.root.title("Stratus RFID — TI RI-STU-MRD2")
-        self.root.geometry("800x700")
+        self.root.title("Stratus RFID — TI RI-STU-MRD2  |  ECM Protocol")
+        self.root.geometry("820x720")
         self.root.configure(bg="#0f172a")
-
-        self.reader  = MRD2Reader()
+        self.mrd     = MRD2()
         self.polling = False
         self._build()
         self._refresh_ports()
 
-    # ── Build UI ───────────────────────────────────────────────
     def _build(self):
-        S = ttk.Style()
-        S.theme_use("clam")
+        S = ttk.Style(); S.theme_use("clam")
         S.configure("TLabelframe",       background="#1e293b", foreground="#94a3b8")
         S.configure("TLabelframe.Label", background="#1e293b",
                     foreground="#38bdf8", font=("Segoe UI",9,"bold"))
-        S.configure("TButton",           font=("Segoe UI",9,"bold"), padding=4)
-        S.configure("Treeview",          background="#1e293b", foreground="#e2e8f0",
+        S.configure("TButton", font=("Segoe UI",9,"bold"), padding=4)
+        S.configure("Treeview", background="#1e293b", foreground="#e2e8f0",
                     fieldbackground="#1e293b", rowheight=22)
-        S.configure("Treeview.Heading",  background="#0f172a", foreground="#38bdf8",
+        S.configure("Treeview.Heading", background="#0f172a", foreground="#38bdf8",
                     font=("Segoe UI",9,"bold"))
-        S.map("Treeview", background=[("selected","#2563eb")])
 
         # Header
-        hdr = tk.Frame(self.root, bg="#0f172a", pady=10)
-        hdr.pack(fill="x")
-        tk.Label(hdr, text="TI RI-STU-MRD2  RFID Reader",
-                 font=("Segoe UI",15,"bold"), bg="#0f172a", fg="#38bdf8").pack(side="left",padx=15)
-        tk.Label(hdr, text="134.2 kHz | HDX/FDX | LMP Protocol",
+        h = tk.Frame(self.root, bg="#0f172a", pady=8)
+        h.pack(fill="x")
+        tk.Label(h, text="TI RI-STU-MRD2  RFID Reader",
+                 font=("Segoe UI",15,"bold"), bg="#0f172a", fg="#38bdf8").pack(side="left", padx=14)
+        tk.Label(h, text="134.2 kHz | HDX+/FDX | ECM Protocol",
                  font=("Segoe UI",9), bg="#0f172a", fg="#64748b").pack(side="left")
 
         # Connection bar
-        cb = tk.Frame(self.root, bg="#1e293b", pady=6, padx=10)
+        cb = tk.Frame(self.root, bg="#1e293b", pady=5, padx=8)
         cb.pack(fill="x")
-
         tk.Label(cb,text="Port:",bg="#1e293b",fg="#94a3b8",
                  font=("Segoe UI",9)).grid(row=0,column=0,sticky="w")
         self.port_var = tk.StringVar()
         self.port_cb  = ttk.Combobox(cb, textvariable=self.port_var, width=9)
         self.port_cb.grid(row=0,column=1,padx=3)
-
-        ttk.Button(cb,text="⟳",width=3,command=self._refresh_ports).grid(row=0,column=2)
-
+        ttk.Button(cb,text="⟳",width=3,
+                   command=self._refresh_ports).grid(row=0,column=2)
         tk.Label(cb,text="Baud:",bg="#1e293b",fg="#94a3b8",
                  font=("Segoe UI",9)).grid(row=0,column=3,padx=(8,2))
         self.baud_var = tk.StringVar(value="9600")
-        ttk.Combobox(cb,textvariable=self.baud_var,width=8,
+        ttk.Combobox(cb, textvariable=self.baud_var, width=8,
                      values=["9600","19200","38400","57600","115200"]
                      ).grid(row=0,column=4,padx=3)
-
-        self.btn_conn = ttk.Button(cb,text="Connect",command=self._toggle_conn,width=11)
+        self.btn_conn = ttk.Button(cb,text="Connect",
+                                   command=self._toggle_conn, width=11)
         self.btn_conn.grid(row=0,column=5,padx=6)
-
         self.lbl_st = tk.Label(cb,text="● OFFLINE",fg="#ef4444",
-                                bg="#1e293b",font=("Segoe UI",9,"bold"))
+                               bg="#1e293b",font=("Segoe UI",9,"bold"))
         self.lbl_st.grid(row=0,column=6,padx=4)
-
-        self.btn_ver = ttk.Button(cb,text="Version",command=self._version,state="disabled",width=8)
+        self.btn_ver = ttk.Button(cb,text="Version",
+                                  command=self._get_ver,state="disabled",width=8)
         self.btn_ver.grid(row=0,column=7,padx=4)
 
         # UID display
-        uf = tk.Frame(self.root, bg="#0f172a", pady=12)
+        uf = tk.Frame(self.root, bg="#0f172a", pady=10)
         uf.pack(fill="x")
-        tk.Label(uf,text="CHIP UID (64-bit)",font=("Segoe UI",8,"bold"),
-                 bg="#0f172a",fg="#64748b").pack()
-        self.lbl_uid = tk.Label(uf,text="— — — — — — — —",
-                                font=("Consolas",24,"bold"),bg="#0f172a",fg="#38bdf8")
+        tk.Label(uf,text="CHIP UID  (64-bit TIRIS)",
+                 font=("Segoe UI",8,"bold"),bg="#0f172a",fg="#64748b").pack()
+        self.lbl_uid = tk.Label(uf,text="—  —  —  —  —  —  —  —",
+                                font=("Consolas",22,"bold"),bg="#0f172a",fg="#38bdf8")
         self.lbl_uid.pack()
         self.lbl_aid = tk.Label(uf,text="Animal ID (ISO 11784): —",
                                 font=("Segoe UI",10),bg="#0f172a",fg="#94a3b8")
         self.lbl_aid.pack()
+        self.lbl_type = tk.Label(uf,text="Tag Type: —",
+                                 font=("Segoe UI",9),bg="#0f172a",fg="#64748b")
+        self.lbl_type.pack()
 
-        # Control bar
-        ctrl = tk.Frame(self.root, bg="#0f172a", pady=4)
-        ctrl.pack(fill="x", padx=10)
+        # Controls
+        ctrl = tk.Frame(self.root,bg="#0f172a",pady=4)
+        ctrl.pack(fill="x",padx=10)
 
-        self.btn_readuid  = ttk.Button(ctrl,text="▶ Read UID (Pages 1-3)",
-                                       command=self._read_uid,state="disabled",width=22)
-        self.btn_readuid.pack(side="left",padx=4)
+        self.btn_cread  = ttk.Button(ctrl,text="▶ Charge Read (Fast)",
+                                     command=self._charge_read,state="disabled",width=20)
+        self.btn_cread.pack(side="left",padx=3)
 
-        self.poll_var = tk.BooleanVar(value=False)
-        self.chk_poll = ttk.Checkbutton(ctrl,text="Auto Poll (100ms)",
-                                        variable=self.poll_var,
-                                        command=self._toggle_poll,state="disabled")
+        self.btn_uid    = ttk.Button(ctrl,text="🔑 Read UID",
+                                     command=self._read_uid_cmd,state="disabled",width=12)
+        self.btn_uid.pack(side="left",padx=3)
+
+        self.poll_var   = tk.BooleanVar(value=False)
+        self.chk_poll   = ttk.Checkbutton(ctrl,text="Auto Poll (80ms)",
+                                          variable=self.poll_var,
+                                          command=self._toggle_poll,state="disabled")
         self.chk_poll.pack(side="left",padx=6)
 
-        self.btn_pages = ttk.Button(ctrl,text="📄 All Pages",
-                                    command=self._all_pages,state="disabled",width=12)
-        self.btn_pages.pack(side="left",padx=4)
+        self.btn_pages  = ttk.Button(ctrl,text="📄 All Blocks",
+                                     command=self._all_blocks,state="disabled",width=12)
+        self.btn_pages.pack(side="left",padx=3)
 
-        self.btn_diag  = ttk.Button(ctrl,text="🔬 Diagnose",
-                                    command=self._diagnose,state="disabled",width=12)
-        self.btn_diag.pack(side="left",padx=4)
+        self.btn_clear  = ttk.Button(ctrl,text="🗑 Clear",
+                                     command=self._clear,width=8)
+        self.btn_clear.pack(side="right",padx=3)
 
-        # Page table
-        tf = ttk.LabelFrame(self.root,text=" Tag Memory Pages ")
+        self.btn_genread = ttk.Button(ctrl,text="📋 General Read",
+                                      command=self._gen_read,state="disabled",width=14)
+        self.btn_genread.pack(side="left",padx=3)
+
+        # Page/Block table
+        tf = ttk.LabelFrame(self.root,text=" Tag Memory Blocks (16 × 4 bytes) ")
         tf.pack(fill="x",padx=10,pady=4)
-
-        cols = ("pg","desc","b3","b2","b1","b0","lock")
+        cols = ("blk","desc","b3","b2","b1","b0","lock")
         self.tree = ttk.Treeview(tf,columns=cols,show="headings",height=8)
-        for c,w,t in [("pg",40,"Page"),("desc",275,"Description"),
+        for c,w,t in [("blk",40,"Block"),("desc",270,"Description"),
                       ("b3",55,"Byte3"),("b2",55,"Byte2"),
-                      ("b1",55,"Byte1"),("b0",55,"Byte0"),("lock",70,"Lock")]:
+                      ("b1",55,"Byte1"),("b0",55,"Byte0"),("lock",72,"Status")]:
             self.tree.heading(c,text=t)
             self.tree.column(c,width=w,anchor="center" if c!="desc" else "w")
-        self.tree.tag_configure("locked",  background="#7c3aed",foreground="white")
-        self.tree.tag_configure("open",    background="#065f46",foreground="white")
-        self.tree.tag_configure("empty",   background="#1e293b",foreground="#475569")
+        self.tree.tag_configure("locked", background="#7c3aed",foreground="white")
+        self.tree.tag_configure("open",   background="#065f46",foreground="white")
+        self.tree.tag_configure("empty",  background="#1e293b",foreground="#475569")
         self.tree.pack(fill="x",padx=4,pady=4)
-        for i,lbl in enumerate(MRD2Reader.PAGE_LABELS):
+        for i,lbl in enumerate(PAGE_LABELS):
             self.tree.insert("","end",iid=str(i),
-                             values=(i+1,lbl,"--","--","--","--","—"),
+                             values=(i,lbl,"--","--","--","--","—"),
                              tags=("empty",))
 
         # Log
         lf = ttk.LabelFrame(self.root,text=" Activity Log ")
         lf.pack(fill="both",expand=True,padx=10,pady=(4,8))
+
+        logctrl = tk.Frame(lf, bg="#1e293b")
+        logctrl.pack(fill="x", padx=4, pady=(2,0))
+        ttk.Button(logctrl,text="Clear Log",
+                   command=self._clear_log,width=10).pack(side="right")
+
         self.log = scrolledtext.ScrolledText(lf,height=7,font=("Consolas",8),
                                              bg="#0f172a",fg="#94a3b8",
                                              insertbackground="white",state="disabled")
         self.log.pack(fill="both",expand=True,padx=4,pady=4)
 
-    # ── Helpers ────────────────────────────────────────────────
+    # ── Helpers ──────────────────────────────────────
     def _log(self, msg):
         self.log.config(state="normal")
-        self.log.insert(tk.END, f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+        self.log.insert(tk.END,f"[{time.strftime('%H:%M:%S')}] {msg}\n")
         self.log.see(tk.END)
         self.log.config(state="disabled")
 
-    def _controls(self, state):
-        for w in [self.btn_readuid,self.chk_poll,self.btn_pages,
-                  self.btn_ver,self.btn_diag]:
-            w.config(state=state)
+    def _controls(self, en):
+        s = "normal" if en else "disabled"
+        for w in [self.btn_cread,self.btn_uid,self.chk_poll,
+                  self.btn_pages,self.btn_genread,self.btn_ver]:
+            w.config(state=s)
 
     def _refresh_ports(self):
         ports = [p.device for p in serial.tools.list_ports.comports()]
         self.port_cb["values"] = ports
         if "COM17" in ports: self.port_var.set("COM17")
         elif ports: self.port_var.set(ports[0])
-        self._log(f"Ports: {', '.join(ports) or 'none'}")
+        self._log(f"Ports detected: {', '.join(ports) or 'none'}")
 
-    def _set_uid(self, uid_hex, animal_id):
-        self.lbl_uid.config(text=" ".join(uid_hex[i:i+2] for i in range(0,16,2)),
-                            fg="#22c55e")
-        self.lbl_aid.config(text=f"Animal ID (ISO 11784): {animal_id}")
+    def _show_uid(self, uid_hex, tag_type_str="", animal_id=None):
+        spaced = " ".join(uid_hex[i:i+2] for i in range(0,16,2))
+        self.lbl_uid.config(text=spaced, fg="#22c55e")
+        if animal_id is not None:
+            self.lbl_aid.config(text=f"Animal ID (ISO 11784): {animal_id}")
+        if tag_type_str:
+            self.lbl_type.config(text=f"Tag Type: {tag_type_str}")
 
-    def _clear_uid(self, msg="NO TAG"):
-        self.lbl_uid.config(text=msg, fg="#64748b")
+    def _clear(self):
+        self.lbl_uid.config(text="—  —  —  —  —  —  —  —", fg="#38bdf8")
         self.lbl_aid.config(text="Animal ID (ISO 11784): —")
+        self.lbl_type.config(text="Tag Type: —")
+        for i in range(16):
+            self.tree.item(str(i),
+                           values=(i, PAGE_LABELS[i],"--","--","--","--","—"),
+                           tags=("empty",))
 
-    # ── Connection ─────────────────────────────────────────────
+    def _clear_log(self):
+        self.log.config(state="normal")
+        self.log.delete("1.0","end")
+        self.log.config(state="disabled")
+
+    @staticmethod
+    def _decode_status(s):
+        t = s & 0x03
+        return {0:"RO Tag",1:"R/W Tag",2:"MPT/SAMPT",3:"Other/Noise"}.get(t,"?")
+
+    @staticmethod
+    def _animal_id(uid_hex):
+        val = int(uid_hex,16)
+        return val & 0x3FFFFFFFFF
+
+    # ── Connection ───────────────────────────────────
     def _toggle_conn(self):
-        if not self.reader.ser or not self.reader.ser.is_open:
-            self.reader.port     = self.port_var.get()
-            self.reader.baudrate = int(self.baud_var.get())
-            res = self.reader.connect()
+        if not self.mrd.ser or not self.mrd.ser.is_open:
+            self.mrd.port = self.port_var.get()
+            self.mrd.baud = int(self.baud_var.get())
+            res = self.mrd.connect()
             if res is True:
-                self._log(f"Connected {self.reader.port} @ {self.reader.baudrate}")
+                self._log(f"Connected: {self.mrd.port} @ {self.mrd.baud} baud")
                 self.btn_conn.config(text="Disconnect")
-                self.lbl_st.config(text="● ONLINE", fg="#22c55e")
-                self._controls("normal")
-                self._version()
+                self.lbl_st.config(text="● ONLINE",fg="#22c55e")
+                self._controls(True)
+                self._get_ver()
             else:
-                self._log(f"Failed: {res}")
-                messagebox.showerror("Error", res)
+                self._log(f"Error: {res}")
+                messagebox.showerror("Error",res)
         else:
-            self.polling = False
-            self.poll_var.set(False)
-            self.reader.disconnect()
+            self.polling = False; self.poll_var.set(False)
+            self.mrd.disconnect()
             self._log("Disconnected.")
             self.btn_conn.config(text="Connect")
-            self.lbl_st.config(text="● OFFLINE", fg="#ef4444")
-            self._controls("disabled")
-            self._clear_uid("OFFLINE")
+            self.lbl_st.config(text="● OFFLINE",fg="#ef4444")
+            self._controls(False)
+            self._clear()
 
-    def _version(self):
-        v = self.reader.get_version()
+    def _get_ver(self):
+        v = self.mrd.get_version()
         if v:
             self._log(f"Firmware: {v}")
-            self.lbl_st.config(text=f"● ONLINE v{v}", fg="#22c55e")
+            self.lbl_st.config(text=f"● ONLINE {v}",fg="#22c55e")
         else:
-            self._log("Version: no response (reader still functional).")
+            self._log("Version query: no response (try ECM commands below).")
 
-    # ── Read UID ───────────────────────────────────────────────
-    def _read_uid(self):
-        threading.Thread(target=self._uid_thread, daemon=True).start()
-
-    def _uid_thread(self):
-        self.root.after(0, lambda: self._log("Reading UID via page reads..."))
-        result = self.reader.read_uid()
-        self.root.after(0, lambda: self._handle_uid(result))
-
-    def _handle_uid(self, result):
+    # ── Reads ─────────────────────────────────────────
+    def _charge_read(self):
+        result = self.mrd.charge_read()
         if result:
-            self._set_uid(result["uid_hex"], result["animal_id"])
-            p1 = result["page1"]
-            p2 = result["page2"]
-            p3 = result["page3"]
-            self._log(f"UID: {result['uid_hex']}  Animal ID: {result['animal_id']}")
-            self._log(f"Page1: {' '.join(f'{b:02X}' for b in p1) if p1 else 'N/A'}")
-            self._log(f"Page2: {' '.join(f'{b:02X}' for b in p2) if p2 else 'N/A'}")
-            self._log(f"Page3: {' '.join(f'{b:02X}' for b in p3) if p3 else 'N/A'}")
+            status, uid = result
+            animal_id   = self._animal_id(uid)
+            tag_type    = self._decode_status(status)
+            self._show_uid(uid, tag_type, animal_id)
+            self._log(f"Charge Read OK | UID: {uid} | Type: {tag_type} | Animal ID: {animal_id}")
         else:
-            self._clear_uid("NO TAG")
-            self._log("No tag — place tag on antenna and try again.")
+            self._log("Charge Read: No tag detected.")
+            self.lbl_uid.config(text="NO TAG",fg="#64748b")
 
-    # ── Poll ───────────────────────────────────────────────────
-    def _toggle_poll(self):
-        if self.poll_var.get():
-            self.polling = True
-            self._log("Auto-polling started (100ms, page-read method).")
-            threading.Thread(target=self._poll_loop, daemon=True).start()
+    def _read_uid_cmd(self):
+        uid = self.mrd.read_uid()
+        if uid:
+            animal_id = self._animal_id(uid)
+            self._show_uid(uid,"HDX+",animal_id)
+            self._log(f"Read UID OK | UID: {uid} | Animal ID: {animal_id}")
         else:
-            self.polling = False
-            self._log("Polling stopped.")
+            self._log("Read UID: No tag or not supported.")
 
-    def _poll_loop(self):
-        last_uid = None
-        while self.polling:
-            result = self.reader.read_uid()
-            if result:
-                if result["uid_hex"] != last_uid:
-                    last_uid = result["uid_hex"]
-                    self.root.after(0, lambda r=result: self._handle_uid(r))
-            else:
-                if last_uid is not None:
-                    last_uid = None
-                    self.root.after(0, lambda: self._clear_uid("NO TAG"))
-            time.sleep(0.1)
+    def _gen_read(self):
+        threading.Thread(target=self._gen_thread,daemon=True).start()
 
-    # ── All Pages ──────────────────────────────────────────────
-    def _all_pages(self):
-        threading.Thread(target=self._pages_thread, daemon=True).start()
+    def _gen_thread(self):
+        self.root.after(0,lambda: self._log("ECM General Read..."))
+        s1,s2,data = self.mrd.general_read()
+        self.root.after(0,lambda: self._handle_gen(s1,s2,data))
 
-    def _pages_thread(self):
-        self.root.after(0, lambda: self._log("Reading all 16 pages..."))
-        pages = self.reader.read_all_pages()
-        self.root.after(0, lambda: self._update_table(pages))
+    def _handle_gen(self,s1,s2,data):
+        if data is None:
+            self._log("General Read: No response."); return
+        raw = " ".join(f"{b:02X}" for b in data)
+        self._log(f"General Read | Status: {s1:02X} {s2:02X} | Data({len(data)}B): {raw}")
+        tag_type = self._decode_status(s1)
+        self._log(f"Tag Type: {tag_type}")
+        # Parse UID (first 8 bytes of data = LSByte first)
+        if len(data) >= 8:
+            uid_raw   = data[:8]
+            uid_hex   = "".join(f"{b:02X}" for b in reversed(uid_raw))
+            animal_id = self._animal_id(uid_hex)
+            self._show_uid(uid_hex,tag_type,animal_id)
+            self._log(f"UID: {uid_hex} | Animal ID: {animal_id}")
+        # Parse Animal ID from pages 15-16 if enough data
+        if len(data) >= 72:
+            aid_block_lo = data[56:60]  # block 14 (page 15)
+            aid_block_hi = data[60:64]  # block 15 (page 16)
+            aid_lo = "".join(f"{b:02X}" for b in aid_block_lo)
+            aid_hi = "".join(f"{b:02X}" for b in aid_block_hi)
+            self._log(f"Animal ID Block Low:  {aid_lo}")
+            self._log(f"Animal ID Block High: {aid_hi}")
 
-    def _update_table(self, pages):
-        for i, d in enumerate(pages):
-            if d and len(d) >= 4:
+    def _all_blocks(self):
+        threading.Thread(target=self._blocks_thread,daemon=True).start()
+
+    def _blocks_thread(self):
+        self.root.after(0,lambda: self._log("Reading all 16 blocks..."))
+        blocks = self.mrd.read_all_blocks()
+        self.root.after(0,lambda: self._update_table(blocks))
+
+    def _update_table(self,blocks):
+        for i,d in enumerate(blocks):
+            if d and len(d)>=4:
                 locked = (i < 4 or i >= 14)
                 tag    = "locked" if locked else "open"
                 lock_t = "Locked" if locked else "Open"
-                self.tree.item(str(i), values=(
-                    i+1, MRD2Reader.PAGE_LABELS[i],
-                    f"{d[0]:02X}",f"{d[1]:02X}",f"{d[2]:02X}",f"{d[3]:02X}", lock_t
-                ), tags=(tag,))
-                self._log(f"  Pg{i+1:2d}: {d[0]:02X} {d[1]:02X} {d[2]:02X} {d[3]:02X}  {MRD2Reader.PAGE_LABELS[i]}")
+                self.tree.item(str(i),values=(
+                    i,PAGE_LABELS[i],
+                    f"{d[0]:02X}",f"{d[1]:02X}",f"{d[2]:02X}",f"{d[3]:02X}",lock_t
+                ),tags=(tag,))
+                self._log(f"  Block {i:2d}: {d[0]:02X} {d[1]:02X} {d[2]:02X} {d[3]:02X}  {PAGE_LABELS[i]}")
+
+                # Populate Animal ID label from blocks 14+15
+                if i == 14:
+                    self._log(f"  Animal ID Lo: {d[0]:02X}{d[1]:02X}{d[2]:02X}{d[3]:02X}")
+                if i == 15:
+                    self._log(f"  Animal ID Hi: {d[0]:02X}{d[1]:02X}{d[2]:02X}{d[3]:02X}")
             else:
                 self.tree.item(str(i),
-                               values=(i+1,MRD2Reader.PAGE_LABELS[i],"??","??","??","??","N/A"),
+                               values=(i,PAGE_LABELS[i],"??","??","??","??","N/A"),
                                tags=("empty",))
 
-    # ── Diagnose ───────────────────────────────────────────────
-    def _diagnose(self):
-        self._log("=== DIAGNOSTICS ===")
-        self._log("Sending CMD 0x00 (Single Read, raw)...")
-        hex_str, d = self.reader.single_read_raw()
-        if hex_str:
-            self._log(f"  RX Raw: {hex_str}")
-            if d and d != "BCC_ERR":
-                self._log(f"  Status: 0x{d[0]:02X} | Data: {[hex(b) for b in d[1:]]}")
-            else:
-                self._log(f"  Parse result: {d}")
+    # ── Poll ─────────────────────────────────────────
+    def _toggle_poll(self):
+        if self.poll_var.get():
+            self.polling = True
+            self._log("Auto-poll started (80ms, ECM Charge Read).")
+            threading.Thread(target=self._poll_loop,daemon=True).start()
         else:
-            self._log("  No response from CMD 0x00.")
+            self.polling = False
+            self._log("Auto-poll stopped.")
 
-        self._log("Testing Read Page 1...")
-        p1 = self.reader.read_page(1)
-        if p1:
-            self._log(f"  Page 1 OK: {' '.join(f'{b:02X}' for b in p1)}")
-        else:
-            self._log("  Page 1: No response or error.")
-        self._log("===================")
+    def _poll_loop(self):
+        last = None
+        while self.polling:
+            result = self.mrd.charge_read()
+            if result:
+                status, uid = result
+                if uid != last:
+                    last      = uid
+                    animal_id = self._animal_id(uid)
+                    tag_type  = self._decode_status(status)
+                    self.root.after(0, lambda u=uid,a=animal_id,t=tag_type:
+                                    self._show_uid(u,t,a))
+                    self.root.after(0, lambda u=uid,a=animal_id,t=tag_type:
+                                    self._log(f"Tag: {u} | {t} | Animal ID: {a}"))
+            else:
+                if last is not None:
+                    last = None
+                    self.root.after(0, lambda:
+                                    self.lbl_uid.config(text="NO TAG",fg="#64748b"))
+            time.sleep(0.08)   # 80ms = HDX cycle time
 
 
 if __name__ == "__main__":
