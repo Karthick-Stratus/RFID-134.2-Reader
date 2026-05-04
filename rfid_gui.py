@@ -47,10 +47,9 @@ class MRD2:
 
     @staticmethod
     def is_valid(status):
-        """True if start-byte-detected AND DBCC-OK (bits 2+3 both set)."""
+        """ECM Status: 0x00=success, 0x03=no tag. Reject only no-tag."""
         if status == 0x03: return False          # No tag
-        if (status & 0x03) == 0x03: return False # Other/Noise
-        return (status & 0x0C) == 0x0C           # bit2+bit3 set
+        return True
 
     @staticmethod
     def tag_type_str(status):
@@ -63,11 +62,17 @@ class MRD2:
         return None
 
     def charge_read(self):
-        """Returns (status, uid_hex) or None. Rejects noise via bit2+3 check."""
+        """Returns (status, uid_hex) or None. Double-read for noise rejection."""
         d = self._parse(self._cmd([0x03, 0x80, ECM_HDX, 0x00]))
         if not d or not self.is_valid(d[0]) or len(d) < 9: return None
-        uid = "".join(f"{b:02X}" for b in reversed(d[1:9]))
-        return d[0], uid
+        uid1 = "".join(f"{b:02X}" for b in reversed(d[1:9]))
+        # Second read to confirm (rejects noise — noise gives random data each time)
+        time.sleep(0.08)  # wait one HDX cycle
+        d2 = self._parse(self._cmd([0x03, 0x80, ECM_HDX, 0x00]))
+        if not d2 or not self.is_valid(d2[0]) or len(d2) < 9: return None
+        uid2 = "".join(f"{b:02X}" for b in reversed(d2[1:9]))
+        if uid1 != uid2: return None  # mismatch = noise
+        return d[0], uid1
 
     def read_block(self, blk):
         """Read single 4-byte block. Returns [B3,B2,B1,B0] or None."""
