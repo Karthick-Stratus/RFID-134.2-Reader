@@ -93,7 +93,7 @@ PAGE_LABELS = [
 TAG_TYPES = {
     "1-Block RO (64-bit)":    {"blocks": 1,  "bits": 64},
     "1-Block R/W (256-bit)":  {"blocks": 4,  "bits": 256},
-    "17-Block MPT (1360-bit)":{"blocks": 16, "bits": 1360},  # 16 readable blocks
+    "16-Block MPT (1360-bit)":{"blocks": 16, "bits": 512},
 }
 
 class App:
@@ -171,17 +171,19 @@ class App:
         # Controls row 1
         c1 = tk.Frame(self.root, bg="#0f172a", pady=2)
         c1.pack(fill="x", padx=10)
-        self.btn_fast = ttk.Button(c1,text="▶ Fast Read (UID)",
+        self.btn_fast = ttk.Button(c1,text="⚡ FAST READ (All)",
                                    command=self._fast_read,state="disabled",width=18)
         self.btn_fast.pack(side="left",padx=3)
-        self.btn_full = ttk.Button(c1,text="📄 Full Read (All Blocks)",
-                                   command=self._full_read,state="disabled",width=22)
+        self.btn_full = ttk.Button(c1,text="📄 Full Read",
+                                   command=self._full_read,state="disabled",width=12)
         self.btn_full.pack(side="left",padx=3)
         self.poll_var = tk.BooleanVar(False)
-        self.chk_poll = ttk.Checkbutton(c1,text="Auto Poll (All Blocks)",
+        self.chk_poll = ttk.Checkbutton(c1,text="Auto Poll",
                                         variable=self.poll_var,
                                         command=self._toggle_poll,state="disabled")
         self.chk_poll.pack(side="left",padx=6)
+        self.btn_export = ttk.Button(c1,text="💾 Export",command=self._export,width=9)
+        self.btn_export.pack(side="right",padx=3)
         ttk.Button(c1,text="🗑 Clear",command=self._clear,width=7).pack(side="right",padx=3)
 
         # Read mode selector
@@ -247,7 +249,33 @@ class App:
 
     def _controls(self, en):
         s = "normal" if en else "disabled"
-        for w in [self.btn_fast,self.btn_full,self.chk_poll,self.btn_ver]: w.config(state=s)
+        for w in [self.btn_fast,self.btn_full,self.chk_poll,self.btn_ver,self.btn_export]: w.config(state=s)
+
+    def _export(self):
+        """Export tag data to text file named by UID."""
+        uid_text = self.lbl_uid.cget("text").replace(" ","")
+        if not uid_text or "—" in uid_text or "NO" in uid_text:
+            messagebox.showwarning("Export","No tag data to export. Read a tag first.")
+            return
+        fname = f"RFID_TAG_{uid_text}.txt"
+        lines = [f"RFID Tag Export — {time.strftime('%Y-%m-%d %H:%M:%S')}"]
+        lines.append(f"Chip UID: {uid_text}")
+        lines.append(f"{self.lbl_type.cget('text')}")
+        lines.append(f"{self.lbl_aid.cget('text')}")
+        lines.append(f"{self.lbl_progress.cget('text')}")
+        lines.append("")
+        lines.append(f"{'Blk':>4} | {'Description':<30} | B3   B2   B1   B0  | Status")
+        lines.append("-" * 78)
+        for i in range(16):
+            vals = self.tree.item(str(i))["values"]
+            if vals:
+                lines.append(f"{vals[0]:>4} | {str(vals[1]):<30} | {vals[2]:>4} {vals[3]:>4} {vals[4]:>4} {vals[5]:>4} | {vals[6]}")
+        import os
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), fname)
+        with open(path, "w") as f:
+            f.write("\n".join(lines))
+        self._log(f"Exported to {fname}")
+        messagebox.showinfo("Export", f"Saved: {fname}")
 
     def _refresh_ports(self):
         ports = [p.device for p in serial.tools.list_ports.comports()]
@@ -311,16 +339,43 @@ class App:
         else:
             self._log("Version: no response.")
 
-    # ── Fast Read (UID only, with noise rejection) ───
+    # ── Fast Read (all blocks, fastest possible) ─────
     def _fast_read(self):
+        self._controls(False)
+        threading.Thread(target=self._fast_thread, daemon=True).start()
+
+    def _fast_thread(self):
         result = self.mrd.charge_read()
-        if result:
-            status, uid = result
-            self._show_uid(uid, status)
-            self._log(f"UID: {uid} | {MRD2.tag_type_str(status)}")
-        else:
-            self._log("No valid tag detected.")
-            self.lbl_uid.config(text="NO TAG", fg="#64748b")
+        if not result:
+            self.root.after(0, lambda: self._log("No valid tag."))
+            self.root.after(0, lambda: self.lbl_uid.config(text="NO TAG",fg="#64748b"))
+            self.root.after(0, lambda: self._controls(True))
+            return
+        status, uid = result
+        self.root.after(0, lambda: self._show_uid(uid, status))
+        self.root.after(0, lambda: self.lbl_progress.config(text="⚡ FAST READING...",fg="#f59e0b"))
+        t0 = time.perf_counter()
+        bits = 0
+        self.root.after(0, lambda: self.pbar.configure(maximum=16))
+        for blk_idx in range(16):
+            page = blk_idx + 1  # pages 1-16
+            data = self.mrd.read_block(page)
+            if data:
+                bits += 32
+                locked = (blk_idx < 4 or blk_idx >= 14)
+                tag = "locked" if locked else "ok"
+                lock = "Locked" if locked else "Open"
+                vals = (page,PAGE_LABELS[blk_idx],f"{data[0]:02X}",f"{data[1]:02X}",f"{data[2]:02X}",f"{data[3]:02X}",lock)
+                self.root.after(0, lambda b=blk_idx,v=vals,tg=tag: self.tree.item(str(b),values=v,tags=(tg,)))
+            self.root.after(0, lambda p=blk_idx+1: self.pbar.configure(value=p))
+            self.root.after(0, lambda b=bits: self.lbl_bits.config(text=f"Bits: {b}/512"))
+            e = time.perf_counter()-t0
+            self.root.after(0, lambda e=e: self.lbl_timer.config(text=f"⏱ {e:.3f}s"))
+        t_total = time.perf_counter()-t0
+        self.root.after(0, lambda: self.lbl_progress.config(text=f"✅ {bits} bits in {t_total:.3f}s ({bits/t_total:.0f} bps)",fg="#22c55e"))
+        self.root.after(0, lambda: self.lbl_timer.config(text=f"⏱ {t_total:.3f}s"))
+        self.root.after(0, lambda: self._log(f"Fast Read done: {bits}/512 bits in {t_total:.3f}s | {uid}"))
+        self.root.after(0, lambda: self._controls(True))
 
     # ── Full Read (All Blocks with progress) ─────────
     def _full_read(self):
@@ -364,37 +419,36 @@ class App:
         bits_read = 0
         blocks_data = []
 
-        for blk in range(n_blocks):
-            data = self.mrd.read_block(blk)
+        for blk_idx in range(n_blocks):
+            page = blk_idx + 1  # pages 1-16
+            data = self.mrd.read_block(page)
             blocks_data.append(data)
             elapsed = time.perf_counter() - t_start
 
             if data:
-                bits_read += 32  # 4 bytes = 32 bits per block
-                tag = "locked" if (blk < 4 or blk >= 14) else "ok"
-                lock = "Locked" if (blk < 4 or blk >= 14) else "Open"
-                vals = (blk, PAGE_LABELS[blk],
+                bits_read += 32
+                locked = (blk_idx < 4 or blk_idx >= 14)
+                tag = "locked" if locked else "ok"
+                lock = "Locked" if locked else "Open"
+                vals = (page, PAGE_LABELS[blk_idx],
                         f"{data[0]:02X}",f"{data[1]:02X}",
                         f"{data[2]:02X}",f"{data[3]:02X}", lock)
-                self.root.after(0, lambda b=blk,v=vals,tg=tag:
+                self.root.after(0, lambda b=blk_idx,v=vals,tg=tag:
                     self.tree.item(str(b), values=v, tags=(tg,)))
             else:
-                self.root.after(0, lambda b=blk:
+                self.root.after(0, lambda b=blk_idx,p=page:
                     self.tree.item(str(b),
-                        values=(b,PAGE_LABELS[b],"??","??","??","??","Fail"),
+                        values=(p,PAGE_LABELS[b],"??","??","??","??","Fail"),
                         tags=("empty",)))
 
-            # Update progress in real-time
-            pct = int((blk+1) / n_blocks * 100)
-            self.root.after(0, lambda p=blk+1: self.pbar.configure(value=p))
+            pct = int((blk_idx+1) / n_blocks * 100)
+            self.root.after(0, lambda p=blk_idx+1: self.pbar.configure(value=p))
             self.root.after(0, lambda b=bits_read:
                 self.lbl_bits.config(text=f"Bits: {b} / {total_bits}"))
             self.root.after(0, lambda e=elapsed:
                 self.lbl_timer.config(text=f"⏱ {e:.3f}s"))
             self.root.after(0, lambda p=pct:
                 self.lbl_progress.config(text=f"📡 READING... {p}%"))
-
-            time.sleep(0.02)
 
         # Step 3: Done
         t_total = time.perf_counter() - t_start
@@ -460,26 +514,27 @@ class App:
 
                 self.root.after(0, lambda: self.pbar.configure(maximum=n_blocks))
 
-                for blk in range(n_blocks):
+                for blk_idx in range(n_blocks):
                     if not self.polling: break
-                    data = self.mrd.read_block(blk)
+                    page = blk_idx + 1
+                    data = self.mrd.read_block(page)
                     elapsed = time.perf_counter() - t0
                     if data:
                         bits += 32
-                        tag = "locked" if (blk<4 or blk>=14) else "ok"
-                        lock = "Locked" if (blk<4 or blk>=14) else "Open"
-                        vals = (blk, PAGE_LABELS[blk],
+                        locked = (blk_idx<4 or blk_idx>=14)
+                        tag = "locked" if locked else "ok"
+                        lock = "Locked" if locked else "Open"
+                        vals = (page, PAGE_LABELS[blk_idx],
                                 f"{data[0]:02X}",f"{data[1]:02X}",
                                 f"{data[2]:02X}",f"{data[3]:02X}", lock)
-                        self.root.after(0, lambda b=blk,v=vals,tg=tag:
+                        self.root.after(0, lambda b=blk_idx,v=vals,tg=tag:
                             self.tree.item(str(b), values=v, tags=(tg,)))
 
-                    self.root.after(0, lambda p=blk+1: self.pbar.configure(value=p))
+                    self.root.after(0, lambda p=blk_idx+1: self.pbar.configure(value=p))
                     self.root.after(0, lambda b=bits:
                         self.lbl_bits.config(text=f"Bits: {b}/{total_bits}"))
                     self.root.after(0, lambda e=elapsed:
                         self.lbl_timer.config(text=f"⏱ {e:.3f}s"))
-                    time.sleep(0.02)
 
                 t_total = time.perf_counter() - t0
                 self.root.after(0, lambda b=bits,t=t_total:
