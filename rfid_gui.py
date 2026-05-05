@@ -94,14 +94,15 @@ PAGE_LABELS = [
     "User Memory","User Memory",
     "Animal ID Byte 3,2,1,0", "Animal ID Byte 7,6,5,4",
 ]
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class App:
     def __init__(self, root):
         self.root = root
-        self.root.title("Stratus RFID — TI RI-STU-MRD2")
-        self.root.geometry("850x820")
-        self.root.configure(bg="#0f172a")
+        self.root.title("Stratus RFID Reader")
+        self.root.geometry("850x850")
+        self.root.configure(bg="#ffffff") # Light Background
         self.mrd = MRD2()
         self.loop_chipid = False
         self.loop_full = False
@@ -110,154 +111,173 @@ class App:
         self._build()
         self._refresh_ports()
 
+    # Color Palette
+    BG_MAIN = "#ffffff"
+    BG_ACCENT = "#f1f5f9"
+    PRIMARY = "#0284c7"
+    TEXT_MAIN = "#1e293b"
+    TEXT_SEC = "#64748b"
+
     def _build(self):
         S = ttk.Style(); S.theme_use("clam")
-        S.configure("TLabelframe", background="#1e293b", foreground="#94a3b8")
-        S.configure("TLabelframe.Label", background="#1e293b",
-                    foreground="#38bdf8", font=("Segoe UI",9,"bold"))
-        S.configure("TButton", font=("Segoe UI",9,"bold"), padding=4)
-        S.configure("Treeview", background="#1e293b", foreground="#e2e8f0",
-                    fieldbackground="#1e293b", rowheight=20)
-        S.configure("Treeview.Heading", background="#0f172a", foreground="#38bdf8",
+        S.configure("TLabelframe", background=self.BG_MAIN, foreground=self.TEXT_SEC)
+        S.configure("TLabelframe.Label", background=self.BG_MAIN,
+                    foreground=self.PRIMARY, font=("Segoe UI",9,"bold"))
+        
+        # Professional Button Style
+        S.configure("TButton", font=("Segoe UI",9,"bold"), padding=6, background="#f8fafc")
+        S.map("TButton",
+              background=[('active', '#e2e8f0'), ('disabled', '#f1f5f9')],
+              foreground=[('active', self.PRIMARY), ('disabled', '#cbd5e1')])
+        
+        S.configure("Action.TButton", font=("Segoe UI",9,"bold"), padding=6, foreground="white", background=self.PRIMARY)
+        S.map("Action.TButton",
+              background=[('active', '#0369a1')],
+              foreground=[('active', 'white')])
+
+        S.configure("Treeview", background=self.BG_MAIN, foreground=self.TEXT_MAIN,
+                    fieldbackground=self.BG_MAIN, rowheight=22, borderwidth=0)
+        S.configure("Treeview.Heading", background=self.BG_ACCENT, foreground=self.PRIMARY,
                     font=("Segoe UI",8,"bold"))
-        S.configure("green.Horizontal.TProgressbar", troughcolor="#1e293b",
+        S.map("Treeview", background=[('selected', '#e0f2fe')], foreground=[('selected', self.PRIMARY)])
+
+        S.configure("green.Horizontal.TProgressbar", troughcolor=self.BG_ACCENT,
                     background="#22c55e")
 
         # Header with logo
-        h = tk.Frame(self.root, bg="#0f172a", pady=6)
+        h = tk.Frame(self.root, bg=self.BG_MAIN, pady=10)
         h.pack(fill="x")
         try:
             logo_path = resource_path("Stratus_Logo.png")
             img = Image.open(logo_path)
             # Preserve aspect ratio
             w, ht = img.size
-            new_h = 40
+            new_h = 50
             new_w = int(w * new_h / ht)
             img = img.resize((new_w, new_h), Image.LANCZOS)
-            # Add white background for visibility on dark UI
-            if img.mode == 'RGBA':
-                bg = Image.new('RGBA', img.size, (255, 255, 255, 255))
-                bg.paste(img, mask=img.split()[3])
-                img = bg
             self.logo_img = ImageTk.PhotoImage(img)
-            tk.Label(h, image=self.logo_img, bg="#0f172a").pack(side="left", padx=12)
+            tk.Label(h, image=self.logo_img, bg=self.BG_MAIN).pack(side="left", padx=20)
         except Exception:
-            if not HAS_PIL:
-                tk.Label(h, text="STRATUS", font=("Segoe UI",14,"bold"),
-                         bg="#0f172a", fg="white").pack(side="left", padx=12)
-            else:
-                tk.Label(h, text="STRATUS", font=("Segoe UI",14,"bold"),
-                         bg="#0f172a", fg="white").pack(side="left", padx=12)
-        tk.Label(h, text="TI RI-STU-MRD2  |  134.2kHz HDX+  |  ECM",
-                 font=("Segoe UI",10,"bold"), bg="#0f172a", fg="#38bdf8").pack(side="left")
+            tk.Label(h, text="STRATUS", font=("Segoe UI",18,"bold"),
+                     bg=self.BG_MAIN, fg=self.PRIMARY).pack(side="left", padx=20)
+        
+        tk.Label(h, text="TI RI-STU-MRD2 READER INTERFACE",
+                 font=("Segoe UI",12,"bold"), bg=self.BG_MAIN, fg=self.TEXT_MAIN).pack(side="left", pady=10)
 
         # Connection
-        cb = tk.Frame(self.root, bg="#1e293b", pady=4, padx=8)
+        cb = tk.Frame(self.root, bg=self.BG_ACCENT, pady=8, padx=10)
         cb.pack(fill="x")
-        tk.Label(cb,text="Port:",bg="#1e293b",fg="#94a3b8",font=("Segoe UI",9)
+        tk.Label(cb,text="Port:",bg=self.BG_ACCENT,fg=self.TEXT_SEC,font=("Segoe UI",9,"bold")
                  ).grid(row=0,column=0)
         self.port_var = tk.StringVar()
-        self.port_cb = ttk.Combobox(cb, textvariable=self.port_var, width=9)
-        self.port_cb.grid(row=0,column=1,padx=3)
+        self.port_cb = ttk.Combobox(cb, textvariable=self.port_var, width=12)
+        self.port_cb.grid(row=0,column=1,padx=5)
         ttk.Button(cb,text="⟳",width=3,command=self._refresh_ports).grid(row=0,column=2)
-        tk.Label(cb,text="Baud:",bg="#1e293b",fg="#94a3b8",font=("Segoe UI",9)
-                 ).grid(row=0,column=3,padx=(8,2))
+        
+        tk.Label(cb,text="Baud:",bg=self.BG_ACCENT,fg=self.TEXT_SEC,font=("Segoe UI",9,"bold")
+                 ).grid(row=0,column=3,padx=(15,5))
         self.baud_var = tk.StringVar(value="9600")
-        ttk.Combobox(cb,textvariable=self.baud_var,width=7,
-                     values=["9600","19200","57600","115200"]).grid(row=0,column=4,padx=3)
-        self.btn_conn = ttk.Button(cb,text="Connect",command=self._toggle_conn,width=10)
-        self.btn_conn.grid(row=0,column=5,padx=6)
-        self.lbl_st = tk.Label(cb,text="● OFFLINE",fg="#ef4444",bg="#1e293b",
+        ttk.Combobox(cb,textvariable=self.baud_var,width=10,
+                     values=["9600","19200","57600","115200"]).grid(row=0,column=4,padx=5)
+        
+        self.btn_conn = ttk.Button(cb,text="Connect",command=self._toggle_conn,width=12, style="Action.TButton")
+        self.btn_conn.grid(row=0,column=5,padx=15)
+        
+        self.lbl_st = tk.Label(cb,text="● OFFLINE",fg="#ef4444",bg=self.BG_ACCENT,
                                font=("Segoe UI",9,"bold"))
-        self.lbl_st.grid(row=0,column=6,padx=4)
+        self.lbl_st.grid(row=0,column=6,padx=5)
+        
         self.btn_ver = ttk.Button(cb,text="Version",command=self._get_ver,
-                                  state="disabled",width=7)
-        self.btn_ver.grid(row=0,column=7,padx=4)
+                                  state="disabled",width=10)
+        self.btn_ver.grid(row=0,column=7,padx=5)
 
         # UID display
-        uf = tk.Frame(self.root, bg="#0f172a", pady=6)
+        uf = tk.Frame(self.root, bg=self.BG_MAIN, pady=15)
         uf.pack(fill="x")
-        tk.Label(uf,text="CHIP UID",font=("Segoe UI",8,"bold"),
-                 bg="#0f172a",fg="#64748b").pack()
+        tk.Label(uf,text="TRANSPONDER CHIP UID",font=("Segoe UI",8,"bold"),
+                 bg=self.BG_MAIN,fg=self.TEXT_SEC).pack()
         self.lbl_uid = tk.Label(uf,text="—  —  —  —  —  —  —  —",
-                                font=("Consolas",20,"bold"),bg="#0f172a",fg="#38bdf8")
-        self.lbl_uid.pack()
-        info = tk.Frame(uf, bg="#0f172a")
+                                font=("Consolas",26,"bold"),bg=self.BG_MAIN,fg=self.PRIMARY)
+        self.lbl_uid.pack(pady=5)
+        
+        info = tk.Frame(uf, bg=self.BG_MAIN)
         info.pack()
-        self.lbl_type = tk.Label(info,text="Type: —",font=("Segoe UI",9),
-                                 bg="#0f172a",fg="#94a3b8")
-        self.lbl_type.pack(side="left",padx=10)
-        self.lbl_aid = tk.Label(info,text="Animal ID: —",font=("Segoe UI",9),
-                                bg="#0f172a",fg="#94a3b8")
-        self.lbl_aid.pack(side="left",padx=10)
+        self.lbl_type = tk.Label(info,text="Type: —",font=("Segoe UI",10,"bold"),
+                                 bg=self.BG_MAIN,fg=self.TEXT_MAIN)
+        self.lbl_type.pack(side="left",padx=20)
+        self.lbl_aid = tk.Label(info,text="Animal ID: —",font=("Segoe UI",10,"bold"),
+                                bg=self.BG_MAIN,fg=self.TEXT_MAIN)
+        self.lbl_aid.pack(side="left",padx=20)
 
         # Controls
-        c1 = tk.Frame(self.root, bg="#0f172a", pady=3)
-        c1.pack(fill="x", padx=10)
+        c1 = tk.Frame(self.root, bg=self.BG_MAIN, pady=10)
+        c1.pack(fill="x", padx=20)
 
         self.chipid_var = tk.BooleanVar(False)
         self.btn_chipid = ttk.Checkbutton(c1, text="🔑 Read Chip ID (Loop)",
                                           variable=self.chipid_var,
                                           command=self._toggle_chipid, state="disabled")
-        self.btn_chipid.pack(side="left", padx=4)
+        self.btn_chipid.pack(side="left", padx=10)
 
         self.full_var = tk.BooleanVar(False)
         self.btn_fullloop = ttk.Checkbutton(c1, text="📄 Full Read (Loop)",
                                             variable=self.full_var,
                                             command=self._toggle_full, state="disabled")
-        self.btn_fullloop.pack(side="left", padx=4)
+        self.btn_fullloop.pack(side="left", padx=10)
 
-        ttk.Button(c1,text="🗑 Clear",command=self._clear,width=7).pack(side="right",padx=3)
-        ttk.Button(c1,text="💾 Export TXT",command=self._export_txt,width=11).pack(side="right",padx=3)
+        ttk.Button(c1,text="🗑 Clear Data",command=self._clear,width=12).pack(side="right",padx=5)
+        ttk.Button(c1,text="💾 Export TXT",command=self._export_txt,width=12).pack(side="right",padx=5)
 
         # Progress
-        pf = tk.Frame(self.root, bg="#1e293b", pady=4, padx=10)
-        pf.pack(fill="x", padx=10, pady=3)
-        row1 = tk.Frame(pf, bg="#1e293b")
+        pf = tk.Frame(self.root, bg=self.BG_ACCENT, pady=8, padx=15)
+        pf.pack(fill="x", padx=20, pady=5)
+        row1 = tk.Frame(pf, bg=self.BG_ACCENT)
         row1.pack(fill="x")
         self.lbl_progress = tk.Label(row1,text="IDLE",
-                                     font=("Consolas",9,"bold"),bg="#1e293b",fg="#94a3b8")
+                                     font=("Segoe UI",9,"bold"),bg=self.BG_ACCENT,fg=self.TEXT_SEC)
         self.lbl_progress.pack(side="left")
         self.lbl_timer = tk.Label(row1,text="⏱ 0.000s",
-                                  font=("Consolas",10,"bold"),bg="#1e293b",fg="#f59e0b")
+                                  font=("Segoe UI",10,"bold"),bg=self.BG_ACCENT,fg="#f59e0b")
         self.lbl_timer.pack(side="right")
         self.lbl_bits = tk.Label(row1,text="Bits: 0/512",
-                                 font=("Consolas",9,"bold"),bg="#1e293b",fg="#22c55e")
-        self.lbl_bits.pack(side="right",padx=15)
+                                 font=("Segoe UI",9,"bold"),bg=self.BG_ACCENT,fg="#10b981")
+        self.lbl_bits.pack(side="right",padx=20)
         self.lbl_reads = tk.Label(row1,text="Reads: 0",
-                                  font=("Consolas",9,"bold"),bg="#1e293b",fg="#a78bfa")
-        self.lbl_reads.pack(side="right",padx=15)
+                                  font=("Segoe UI",9,"bold"),bg=self.BG_ACCENT,fg="#8b5cf6")
+        self.lbl_reads.pack(side="right",padx=20)
         self.pbar = ttk.Progressbar(pf, length=800, mode="determinate",
                                     style="green.Horizontal.TProgressbar")
-        self.pbar.pack(fill="x", pady=(3,0))
+        self.pbar.pack(fill="x", pady=(8,0))
 
-        # Block table — show ALL 16 rows
-        tf = ttk.LabelFrame(self.root, text=" Tag Memory Blocks (Pages 0-15) ")
-        tf.pack(fill="both", expand=True, padx=10, pady=3)
+        # Block table
+        tf = ttk.LabelFrame(self.root, text=" TAG MEMORY MAP ")
+        tf.pack(fill="both", expand=True, padx=20, pady=10)
         cols = ("pg","desc","b3","b2","b1","b0","st")
         self.tree = ttk.Treeview(tf,columns=cols,show="headings",height=16)
-        for c,w,t in [("pg",40,"Page"),("desc",270,"Description"),
-                      ("b3",55,"Byte3"),("b2",55,"Byte2"),
-                      ("b1",55,"Byte1"),("b0",55,"Byte0"),("st",65,"Status")]:
+        for c,w,t in [("pg",50,"PAGE"),("desc",300,"DESCRIPTION"),
+                      ("b3",60,"BYTE 3"),("b2",60,"BYTE 2"),
+                      ("b1",60,"BYTE 1"),("b0",60,"BYTE 0"),("st",80,"STATUS")]:
             self.tree.heading(c,text=t)
             self.tree.column(c,width=w,anchor="center" if c!="desc" else "w")
-        self.tree.tag_configure("locked", background="#7c3aed", foreground="white")
-        self.tree.tag_configure("ok", background="#065f46", foreground="white")
-        self.tree.tag_configure("empty", background="#1e293b", foreground="#475569")
-        self.tree.pack(fill="both", expand=True, padx=4, pady=2)
+        
+        self.tree.tag_configure("locked", background="#f3e8ff", foreground="#7e22ce")
+        self.tree.tag_configure("ok", background="#ecfdf5", foreground="#047857")
+        self.tree.tag_configure("empty", background=self.BG_MAIN, foreground="#94a3b8")
+        
+        self.tree.pack(fill="both", expand=True, padx=5, pady=5)
         for i,l in enumerate(PAGE_LABELS):
             self.tree.insert("","end",iid=str(i),
                              values=(i,l,"--","--","--","--","—"),tags=("empty",))
 
         # Log
-        lf = ttk.LabelFrame(self.root, text=" Log ")
-        lf.pack(fill="x", padx=10, pady=(2,6))
-        lc = tk.Frame(lf, bg="#1e293b")
-        lc.pack(fill="x",padx=4,pady=(2,0))
-        ttk.Button(lc,text="Clear Log",command=self._clear_log,width=9).pack(side="right")
-        self.log = scrolledtext.ScrolledText(lf,height=4,font=("Consolas",8),
-                    bg="#0f172a",fg="#94a3b8",insertbackground="white",state="disabled")
-        self.log.pack(fill="x",padx=4,pady=2)
+        lf = ttk.LabelFrame(self.root, text=" SYSTEM LOG ")
+        lf.pack(fill="x", padx=20, pady=(5,15))
+        lc = tk.Frame(lf, bg=self.BG_MAIN)
+        lc.pack(fill="x",padx=5,pady=(2,0))
+        ttk.Button(lc,text="Clear Log",command=self._clear_log,width=12).pack(side="right")
+        self.log = scrolledtext.ScrolledText(lf,height=5,font=("Consolas",9),
+                    bg="#ffffff",fg=self.TEXT_MAIN,insertbackground="black",state="disabled", borderwidth=1, relief="solid")
+        self.log.pack(fill="x",padx=5,pady=5)
 
     # ── Helpers ──────────────────────────────────────
     def _log(self, m):
@@ -282,10 +302,10 @@ class App:
         self.last_blocks = [None]*16
 
     def _clear(self):
-        self.lbl_uid.config(text="—  —  —  —  —  —  —  —", fg="#38bdf8")
+        self.lbl_uid.config(text="—  —  —  —  —  —  —  —", fg=self.PRIMARY)
         self.lbl_aid.config(text="Animal ID: —")
         self.lbl_type.config(text="Type: —")
-        self.lbl_progress.config(text="IDLE", fg="#94a3b8")
+        self.lbl_progress.config(text="IDLE", fg=self.TEXT_SEC)
         self.lbl_timer.config(text="⏱ 0.000s")
         self.lbl_bits.config(text="Bits: 0/512")
         self.lbl_reads.config(text="Reads: 0")
@@ -302,7 +322,7 @@ class App:
 
     def _show_uid(self, uid, status):
         spaced = " ".join(uid[i:i+2] for i in range(0,len(uid),2))
-        self.lbl_uid.config(text=spaced, fg="#22c55e")
+        self.lbl_uid.config(text=spaced, fg="#0ea5e9")
         self.lbl_type.config(text=f"Type: {MRD2.tag_type_str(status)}")
         self.lbl_aid.config(text=f"Animal ID: {self._animal_id(uid)}")
         self.last_uid = uid
@@ -320,23 +340,26 @@ class App:
         """Append one row to Excel CSV file with timestamp."""
         fname = os.path.join(BASE_DIR, "RFID_Log.csv")
         exists = os.path.isfile(fname)
-        with open(fname, "a") as f:
-            if not exists:
-                hdr = "DateTime,UID,AnimalID,Type"
+        try:
+            with open(fname, "a") as f:
+                if not exists:
+                    hdr = "DateTime,UID,AnimalID,Type"
+                    for i in range(16):
+                        hdr += f",Page{i}_B3,Page{i}_B2,Page{i}_B1,Page{i}_B0"
+                    f.write(hdr + "\n")
+                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                aid = self._animal_id(uid)
+                row = f"{now},{uid},{aid},HDX+"
                 for i in range(16):
-                    hdr += f",Page{i}_B3,Page{i}_B2,Page{i}_B1,Page{i}_B0"
-                f.write(hdr + "\n")
-            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            aid = self._animal_id(uid)
-            row = f"{now},{uid},{aid},HDX+"
-            for i in range(16):
-                d = blocks[i]
-                if d:
-                    row += f",{d[0]:02X},{d[1]:02X},{d[2]:02X},{d[3]:02X}"
-                else:
-                    row += ",,,,"
-            f.write(row + "\n")
-        self.root.after(0, lambda: self._log(f"Logged to RFID_Log.csv"))
+                    d = blocks[i]
+                    if d:
+                        row += f",{d[0]:02X},{d[1]:02X},{d[2]:02X},{d[3]:02X}"
+                    else:
+                        row += ",,,,"
+                f.write(row + "\n")
+            self.root.after(0, lambda: self._log(f"Logged to RFID_Log.csv"))
+        except Exception as e:
+            self.root.after(0, lambda: self._log(f"CSV Log Error: {str(e)}"))
 
     def _export_txt(self):
         uid = self.last_uid
@@ -357,9 +380,12 @@ class App:
             else:
                 lines.append(f"{i:>4} | {PAGE_LABELS[i]:<30} |  --   --   --   --  | N/A")
         path = os.path.join(BASE_DIR, fname)
-        with open(path, "w") as f: f.write("\n".join(lines))
-        self._log(f"Exported: {fname}")
-        messagebox.showinfo("Export", f"Saved: {fname}")
+        try:
+            with open(path, "w") as f: f.write("\n".join(lines))
+            self._log(f"Exported: {fname}")
+            messagebox.showinfo("Export", f"Saved: {fname}")
+        except Exception as e:
+            messagebox.showerror("Export Error", str(e))
 
     # ── Connection ───────────────────────────────────
     def _toggle_conn(self):
@@ -370,9 +396,9 @@ class App:
             if res is True:
                 self._log(f"Connected {self.mrd.port} @ {self.mrd.baud}")
                 self.btn_conn.config(text="Disconnect")
-                self.lbl_st.config(text="● ONLINE", fg="#22c55e")
+                self.lbl_st.config(text="● ONLINE", fg="#10b981")
                 self._controls(True); self._get_ver()
-            else: messagebox.showerror("Error", res)
+            else: messagebox.showerror("Connection Error", res)
         else:
             self.loop_chipid = False; self.chipid_var.set(False)
             self.loop_full = False; self.full_var.set(False)
@@ -385,7 +411,7 @@ class App:
         v = self.mrd.get_version()
         if v:
             self._log(f"Firmware: {v}")
-            self.lbl_st.config(text=f"● ONLINE {v}", fg="#22c55e")
+            self.lbl_st.config(text=f"● ONLINE {v}", fg="#10b981")
         else: self._log("Version: no response.")
 
     # ── Read Chip ID Loop ────────────────────────────
@@ -445,13 +471,13 @@ class App:
                 continue
 
             status, uid = result
-            count += 1
             self.root.after(0, lambda u=uid,s=status: self._show_uid(u, s))
+            count += 1
             self.root.after(0, lambda c=count: self.lbl_reads.config(text=f"Reads: {c}"))
             self.root.after(0, lambda: self.lbl_progress.config(
-                text="📡 READING...", fg="#38bdf8"))
+                text="📡 READING BLOCKS...", fg=self.PRIMARY))
 
-            # Read all 16 blocks (pages 0-15, 0-indexed)
+            # Read all 16 blocks (pages 0-15)
             t0 = time.perf_counter()
             bits = 0
             blocks = [None]*16
@@ -479,7 +505,7 @@ class App:
             self.root.after(0, lambda b=bits,t=t_total,r=bps:
                 self.lbl_progress.config(
                     text=f"✅ #{count} — {b} bits in {t:.3f}s ({r:.0f} bps)",
-                    fg="#22c55e"))
+                    fg="#10b981"))
             self.root.after(0, lambda t=t_total:
                 self.lbl_timer.config(text=f"⏱ {t:.3f}s"))
             self.root.after(0, lambda u=uid,c=count,b=bits,t=t_total:
@@ -487,7 +513,7 @@ class App:
 
             # Log to CSV
             self._append_excel(uid, blocks)
-            time.sleep(0.1)  # brief pause before next cycle
+            time.sleep(0.1)
 
 
 if __name__ == "__main__":
