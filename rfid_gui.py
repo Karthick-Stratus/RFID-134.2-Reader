@@ -1,7 +1,16 @@
-import serial, serial.tools.list_ports, threading, time, os, datetime
+import serial, serial.tools.list_ports, threading, time, os, sys, datetime
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-from PIL import Image, ImageTk
+try:
+    from PIL import Image, ImageTk
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
+def resource_path(relative):
+    """Get path for bundled resources (works with PyInstaller EXE)."""
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, relative)
 
 # ECM Protocol for TI RI-STU-MRD2 (SCBU049)
 ECM_HDX = 0x03
@@ -67,11 +76,15 @@ class MRD2:
         if uid1 != uid2: return None
         return d[0], uid1
 
-    def read_block(self, blk):
-        """Read 4-byte block. blk=0..15 (0-indexed, matching Microreader II)."""
-        d = self._parse(self._cmd([0x04, 0x80, ECM_HDX, 0x03, blk]))
-        if not d or not self.is_valid(d[0]) or len(d) < 6: return None
-        return d[2:6]
+    def read_block(self, blk, retries=3):
+        """Read 4-byte block with retries. blk=0..15 (0-indexed)."""
+        for attempt in range(retries):
+            raw = self._cmd([0x04, 0x80, ECM_HDX, 0x03, blk])
+            d = self._parse(raw)
+            if d and self.is_valid(d[0]) and len(d) >= 6:
+                return d[2:6]
+            time.sleep(0.05)  # brief pause before retry
+        return None
 
 PAGE_LABELS = [
     "Chip ID Byte 3,2,1,0", "Reserved & Chip ID 6,5,4",
@@ -81,7 +94,6 @@ PAGE_LABELS = [
     "User Memory","User Memory",
     "Animal ID Byte 3,2,1,0", "Animal ID Byte 7,6,5,4",
 ]
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class App:
@@ -115,14 +127,27 @@ class App:
         h = tk.Frame(self.root, bg="#0f172a", pady=6)
         h.pack(fill="x")
         try:
-            logo_path = os.path.join(BASE_DIR, "Stratus_Logo.png")
+            logo_path = resource_path("Stratus_Logo.png")
             img = Image.open(logo_path)
-            img = img.resize((120, 40), Image.LANCZOS)
+            # Preserve aspect ratio
+            w, ht = img.size
+            new_h = 40
+            new_w = int(w * new_h / ht)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+            # Add white background for visibility on dark UI
+            if img.mode == 'RGBA':
+                bg = Image.new('RGBA', img.size, (255, 255, 255, 255))
+                bg.paste(img, mask=img.split()[3])
+                img = bg
             self.logo_img = ImageTk.PhotoImage(img)
             tk.Label(h, image=self.logo_img, bg="#0f172a").pack(side="left", padx=12)
         except Exception:
-            tk.Label(h, text="STRATUS", font=("Segoe UI",14,"bold"),
-                     bg="#0f172a", fg="#38bdf8").pack(side="left", padx=12)
+            if not HAS_PIL:
+                tk.Label(h, text="STRATUS", font=("Segoe UI",14,"bold"),
+                         bg="#0f172a", fg="white").pack(side="left", padx=12)
+            else:
+                tk.Label(h, text="STRATUS", font=("Segoe UI",14,"bold"),
+                         bg="#0f172a", fg="white").pack(side="left", padx=12)
         tk.Label(h, text="TI RI-STU-MRD2  |  134.2kHz HDX+  |  ECM",
                  font=("Segoe UI",10,"bold"), bg="#0f172a", fg="#38bdf8").pack(side="left")
 
@@ -438,6 +463,9 @@ class App:
                 if data:
                     bits += 32
                     self.root.after(0, lambda i=pg,d=data: self._update_block(i, d))
+                else:
+                    self.root.after(0, lambda i=pg: self._log(
+                        f"⚠ Page {i} failed after 3 retries"))
 
                 self.root.after(0, lambda p=pg+1: self.pbar.configure(value=p))
                 self.root.after(0, lambda b=bits: self.lbl_bits.config(
