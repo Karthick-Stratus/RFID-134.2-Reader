@@ -161,7 +161,7 @@ class App:
             tk.Label(h, text="STRATUS", font=("Segoe UI",18,"bold"),
                      bg=self.BG_MAIN, fg=self.PRIMARY).pack(side="left", padx=20)
         
-        tk.Label(h, text="TI RI-STU-MRD2 READER INTERFACE",
+        tk.Label(h, text="STRATUS LF 134.2 kHz RFID Reader HDX+",
                  font=("Segoe UI",12,"bold"), bg=self.BG_MAIN, fg=self.TEXT_MAIN).pack(side="left", pady=10)
 
         # Connection
