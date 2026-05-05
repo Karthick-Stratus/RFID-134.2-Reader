@@ -385,7 +385,7 @@ class App:
 
     def _full_read_thread(self):
         mode = self.tag_mode.get()
-        cfg  = TAG_TYPES.get(mode, TAG_TYPES["17-Block MPT (1360-bit)"])
+        cfg  = TAG_TYPES.get(mode, TAG_TYPES["16-Block MPT (1360-bit)"])
         n_blocks  = cfg["blocks"]
         total_bits = cfg["bits"]
 
@@ -506,7 +506,7 @@ class App:
 
                 # Read all blocks for this tag
                 mode = self.tag_mode.get()
-                cfg  = TAG_TYPES.get(mode, TAG_TYPES["17-Block MPT (1360-bit)"])
+                cfg  = TAG_TYPES.get(mode, TAG_TYPES["16-Block MPT (1360-bit)"])
                 n_blocks = cfg["blocks"]
                 total_bits = cfg["bits"]
                 t0 = time.perf_counter()
